@@ -1,0 +1,14 @@
+supabase==2.9.0
+httpx>=0.26.0
+openai>=1.50.0
+feedparser==6.0.10
+beautifulsoup4==4.12.3
+requests==2.31.0
+python-dotenv==1.0.1
+nltk==3.8.1
+selenium==4.15.0
+webdriver-manager==4.0.1
+numpy==1.26.0
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0

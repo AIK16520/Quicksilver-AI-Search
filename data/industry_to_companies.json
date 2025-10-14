@@ -1,0 +1,107 @@
+{
+  "Insurance Tech": [
+    "Aclaimant"
+  ],
+  "Hardware": [
+    "Ambiq Micro"
+  ],
+  "Energy": [
+    "Ambyint",
+    "Collide",
+    "ESG Solutions",
+    "Molecule"
+  ],
+  "Enterprise SaaS": [
+    "ArborXR",
+    "Voze"
+  ],
+  "AI/ML": [
+    "Astronaut"
+  ],
+  "Financial Services": [
+    "BitGo"
+  ],
+  "Cybersecurity": [
+    "Blumira",
+    "Trava"
+  ],
+  "Marketing Tech": [
+    "Brandrank.ai"
+  ],
+  "Construction Tech": [
+    "Buildforce"
+  ],
+  "E-commerce": [
+    "Cart.com",
+    "Nectar Social",
+    "ReturnLogic",
+    "Upgrade"
+  ],
+  "Supply Chain": [
+    "Chain.io"
+  ],
+  "GovTech": [
+    "Civitech",
+    "Polco"
+  ],
+  "Healthcare IT": [
+    "Careviso",
+    "KODE",
+    "Medefy",
+    "RepeatMD"
+  ],
+  "Consumer Tech": [
+    "Cooklist"
+  ],
+  "DevOps": [
+    "Graylog",
+    "Liquibase"
+  ],
+  "LegalTech": [
+    "Ironclad"
+  ],
+  "FinTech": [
+    "LISNR",
+    "OpenTrade",
+    "ProfitR",
+    "Signal Advisors"
+  ],
+  "IT Services": [
+    "MSPbots"
+  ],
+  "Healthcare": [
+    "Neumora",
+    "OmniScience",
+    "Otto",
+    "Ripple Science"
+  ],
+  "Utilities": [
+    "Olea Networks"
+  ],
+  "Blockchain": [
+    "Plasma"
+  ],
+  "Food Tech": [
+    "Satsuma"
+  ],
+  "MarTech": [
+    "Predactiv",
+    "Volt"
+  ],
+  "Manufacturing": [
+    "Sight Machine"
+  ],
+  "Home Services": [
+    "SmartAC"
+  ],
+  "PropTech": [
+    "Spruce"
+  ],
+  "Aerospace": [
+    "Starlab Space",
+    "Venus Aerospace"
+  ],
+  "HR Tech": [
+    "WizeHire"
+  ]
+}

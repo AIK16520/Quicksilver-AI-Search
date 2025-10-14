@@ -1,0 +1,813 @@
+{
+  "AI": [
+    "Aclaimant",
+    "Ambyint",
+    "Astronaut",
+    "Careviso",
+    "Ironclad",
+    "KODE",
+    "Molecule",
+    "Polco",
+    "RepeatMD",
+    "Sight Machine",
+    "SmartAC",
+    "Voze",
+    "WizeHire"
+  ],
+  "claims management": [
+    "Aclaimant"
+  ],
+  "insurance": [
+    "Aclaimant",
+    "Trava"
+  ],
+  "workplace safety": [
+    "Aclaimant"
+  ],
+  "technology": [
+    "Aclaimant",
+    "Brandrank.ai",
+    "Cart.com",
+    "Chain.io",
+    "Collide",
+    "ESG Solutions",
+    "Molecule",
+    "MSPbots",
+    "Nectar Social",
+    "RepeatMD",
+    "Signal Advisors",
+    "Starlab Space",
+    "Trava",
+    "Voze"
+  ],
+  "Insurance Tech": [
+    "Aclaimant"
+  ],
+  "semiconductor": [
+    "Ambiq Micro"
+  ],
+  "energy-efficient": [
+    "Ambiq Micro"
+  ],
+  "timing ICs": [
+    "Ambiq Micro"
+  ],
+  "power management": [
+    "Ambiq Micro"
+  ],
+  "battery-powered devices": [
+    "Ambiq Micro"
+  ],
+  "Hardware": [
+    "Ambiq Micro"
+  ],
+  "optimization": [
+    "Ambyint"
+  ],
+  "upstream oil and gas": [
+    "Ambyint"
+  ],
+  "advanced analytics": [
+    "Ambyint"
+  ],
+  "real-time surveillance": [
+    "Ambyint"
+  ],
+  "Energy": [
+    "Ambyint",
+    "Collide",
+    "ESG Solutions",
+    "Molecule"
+  ],
+  "AR": [
+    "ArborXR"
+  ],
+  "VR": [
+    "ArborXR"
+  ],
+  "remote management": [
+    "ArborXR"
+  ],
+  "device fleet": [
+    "ArborXR"
+  ],
+  "content deployment": [
+    "ArborXR"
+  ],
+  "enterprise solutions": [
+    "ArborXR"
+  ],
+  "software platform": [
+    "ArborXR"
+  ],
+  "user control": [
+    "ArborXR"
+  ],
+  "Enterprise SaaS": [
+    "ArborXR",
+    "Voze"
+  ],
+  "insights": [
+    "Astronaut"
+  ],
+  "analytics": [
+    "Astronaut",
+    "Molecule",
+    "MSPbots",
+    "ReturnLogic",
+    "Sight Machine"
+  ],
+  "community engagement": [
+    "Astronaut",
+    "Civitech",
+    "Polco"
+  ],
+  "data-driven": [
+    "Astronaut"
+  ],
+  "metrics": [
+    "Astronaut"
+  ],
+  "AI/ML": [
+    "Astronaut"
+  ],
+  "custody services": [
+    "BitGo"
+  ],
+  "financial services": [
+    "BitGo",
+    "LISNR"
+  ],
+  "blockchain": [
+    "BitGo",
+    "Plasma",
+    "ProfitR"
+  ],
+  "infrastructure": [
+    "BitGo",
+    "OpenTrade"
+  ],
+  "investors": [
+    "BitGo"
+  ],
+  "builders": [
+    "BitGo"
+  ],
+  "regulated": [
+    "BitGo"
+  ],
+  "security": [
+    "BitGo"
+  ],
+  "Financial Services": [
+    "BitGo"
+  ],
+  "SIEM": [
+    "Blumira"
+  ],
+  "cybersecurity": [
+    "Blumira",
+    "Trava"
+  ],
+  "mid-market": [
+    "Blumira"
+  ],
+  "security platform": [
+    "Blumira"
+  ],
+  "event management": [
+    "Blumira"
+  ],
+  "Cybersecurity": [
+    "Blumira",
+    "Trava"
+  ],
+  "SaaS": [
+    "Brandrank.ai",
+    "Chain.io",
+    "Molecule",
+    "Polco",
+    "RepeatMD",
+    "Ripple Science"
+  ],
+  "brand monitoring": [
+    "Brandrank.ai"
+  ],
+  "generative AI": [
+    "Brandrank.ai"
+  ],
+  "answer engines": [
+    "Brandrank.ai"
+  ],
+  "marketing": [
+    "Brandrank.ai",
+    "Nectar Social"
+  ],
+  "Marketing Tech": [
+    "Brandrank.ai"
+  ],
+  "talent management": [
+    "Buildforce"
+  ],
+  "construction industry": [
+    "Buildforce"
+  ],
+  "online platform": [
+    "Buildforce"
+  ],
+  "workforce solutions": [
+    "Buildforce"
+  ],
+  "recruitment": [
+    "Buildforce",
+    "Ripple Science",
+    "WizeHire"
+  ],
+  "Construction Tech": [
+    "Buildforce"
+  ],
+  "unified commerce": [
+    "Cart.com"
+  ],
+  "logistics solutions": [
+    "Cart.com"
+  ],
+  "B2C": [
+    "Cart.com"
+  ],
+  "B2B": [
+    "Cart.com",
+    "Chain.io",
+    "Signal Advisors",
+    "Voze"
+  ],
+  "e-commerce": [
+    "Cart.com",
+    "Nectar Social",
+    "ReturnLogic",
+    "Upgrade"
+  ],
+  "fulfillment": [
+    "Cart.com"
+  ],
+  "supply chain": [
+    "Cart.com",
+    "Chain.io"
+  ],
+  "E-commerce": [
+    "Cart.com",
+    "Nectar Social",
+    "ReturnLogic",
+    "Upgrade"
+  ],
+  "cloud-based": [
+    "Chain.io"
+  ],
+  "integration": [
+    "Chain.io"
+  ],
+  "data visibility": [
+    "Chain.io"
+  ],
+  "trading partners": [
+    "Chain.io"
+  ],
+  "logistics": [
+    "Chain.io"
+  ],
+  "Supply Chain": [
+    "Chain.io"
+  ],
+  "civic technology": [
+    "Civitech"
+  ],
+  "software solutions": [
+    "Civitech"
+  ],
+  "affordable tools": [
+    "Civitech"
+  ],
+  "change management": [
+    "Civitech"
+  ],
+  "GovTech": [
+    "Civitech",
+    "Polco",
+    "Polco"
+  ],
+  "healthcare": [
+    "Careviso",
+    "KODE",
+    "Medefy",
+    "RepeatMD"
+  ],
+  "transparency": [
+    "Careviso"
+  ],
+  "software": [
+    "Careviso",
+    "Collide",
+    "Molecule",
+    "MSPbots",
+    "RepeatMD",
+    "Voze",
+    "WizeHire"
+  ],
+  "prior authorization": [
+    "Careviso"
+  ],
+  "pricing": [
+    "Careviso"
+  ],
+  "providers": [
+    "Careviso"
+  ],
+  "Healthcare IT": [
+    "Careviso",
+    "KODE",
+    "Medefy",
+    "RepeatMD"
+  ],
+  "GenAI": [
+    "Collide",
+    "OmniScience",
+    "Predactiv"
+  ],
+  "energy": [
+    "Collide"
+  ],
+  "platform": [
+    "Collide"
+  ],
+  "vertical": [
+    "Collide"
+  ],
+  "innovation": [
+    "Collide",
+    "Starlab Space"
+  ],
+  "automation": [
+    "Cooklist",
+    "Ironclad",
+    "Liquibase",
+    "MSPbots",
+    "Voze",
+    "WizeHire"
+  ],
+  "household management": [
+    "Cooklist"
+  ],
+  "pantry tracking": [
+    "Cooklist"
+  ],
+  "dietary preferences": [
+    "Cooklist"
+  ],
+  "food planning": [
+    "Cooklist"
+  ],
+  "Consumer Tech": [
+    "Cooklist"
+  ],
+  "subsurface diagnostics": [
+    "ESG Solutions"
+  ],
+  "decision-making": [
+    "ESG Solutions"
+  ],
+  "operations": [
+    "ESG Solutions"
+  ],
+  "data analytics": [
+    "ESG Solutions",
+    "Graylog",
+    "Olea Networks",
+    "OmniScience"
+  ],
+  "environmental solutions": [
+    "ESG Solutions"
+  ],
+  "log management": [
+    "Graylog"
+  ],
+  "open source": [
+    "Graylog"
+  ],
+  "IT infrastructure": [
+    "Graylog"
+  ],
+  "security monitoring": [
+    "Graylog"
+  ],
+  "DevOps": [
+    "Graylog",
+    "Liquibase",
+    "Liquibase"
+  ],
+  "legal management": [
+    "Ironclad"
+  ],
+  "enterprise software": [
+    "Ironclad",
+    "Liquibase"
+  ],
+  "contract lifecycle management": [
+    "Ironclad"
+  ],
+  "LegalTech": [
+    "Ironclad"
+  ],
+  "medical coding": [
+    "KODE"
+  ],
+  "on-demand platform": [
+    "KODE"
+  ],
+  "real-time connection": [
+    "KODE"
+  ],
+  "cloud computing": [
+    "Liquibase"
+  ],
+  "database management": [
+    "Liquibase"
+  ],
+  "agile development": [
+    "Liquibase"
+  ],
+  "software as a service": [
+    "Liquibase"
+  ],
+  "CI/CD": [
+    "Liquibase"
+  ],
+  "data-over-sound": [
+    "LISNR"
+  ],
+  "proximity verification": [
+    "LISNR"
+  ],
+  "contactless transactions": [
+    "LISNR"
+  ],
+  "mobility enterprises": [
+    "LISNR"
+  ],
+  "FinTech": [
+    "LISNR",
+    "OpenTrade",
+    "ProfitR",
+    "Signal Advisors"
+  ],
+  "benefits navigation": [
+    "Medefy"
+  ],
+  "health plan members": [
+    "Medefy"
+  ],
+  "cost reduction": [
+    "Medefy"
+  ],
+  "technology platform": [
+    "Medefy",
+    "SmartAC"
+  ],
+  "energy trading": [
+    "Molecule"
+  ],
+  "risk management": [
+    "Molecule",
+    "Trava"
+  ],
+  "ETRM": [
+    "Molecule"
+  ],
+  "RPA": [
+    "MSPbots"
+  ],
+  "MSP": [
+    "MSPbots"
+  ],
+  "process optimization": [
+    "MSPbots"
+  ],
+  "IT Services": [
+    "MSPbots"
+  ],
+  "social commerce": [
+    "Nectar Social"
+  ],
+  "disruptive brands": [
+    "Nectar Social"
+  ],
+  "precision medicine": [
+    "Neumora"
+  ],
+  "brain health": [
+    "Neumora"
+  ],
+  "health technology": [
+    "Neumora"
+  ],
+  "neurology": [
+    "Neumora"
+  ],
+  "healthcare innovation": [
+    "Neumora"
+  ],
+  "Healthcare": [
+    "Neumora",
+    "OmniScience",
+    "Otto",
+    "Ripple Science"
+  ],
+  "water utility": [
+    "Olea Networks"
+  ],
+  "monitoring solution": [
+    "Olea Networks"
+  ],
+  "revenue optimization": [
+    "Olea Networks"
+  ],
+  "IoT": [
+    "Olea Networks",
+    "Sight Machine"
+  ],
+  "Utilities": [
+    "Olea Networks"
+  ],
+  "Vertical AI": [
+    "OmniScience"
+  ],
+  "life sciences": [
+    "OmniScience"
+  ],
+  "clinical trials": [
+    "OmniScience"
+  ],
+  "healthcare technology": [
+    "OmniScience",
+    "Ripple Science"
+  ],
+  "fintech": [
+    "OpenTrade",
+    "Signal Advisors"
+  ],
+  "stablecoin": [
+    "OpenTrade"
+  ],
+  "yield-bearing": [
+    "OpenTrade"
+  ],
+  "asset management": [
+    "OpenTrade"
+  ],
+  "global finance": [
+    "OpenTrade"
+  ],
+  "vet automation": [
+    "Otto"
+  ],
+  "veterinary clinics": [
+    "Otto"
+  ],
+  "productivity tools": [
+    "Otto"
+  ],
+  "staff burnout": [
+    "Otto"
+  ],
+  "client experience": [
+    "Otto"
+  ],
+  "stablecoins": [
+    "Plasma"
+  ],
+  "high-throughput": [
+    "Plasma"
+  ],
+  "scalability": [
+    "Plasma"
+  ],
+  "financial technology": [
+    "Plasma"
+  ],
+  "Blockchain": [
+    "Plasma"
+  ],
+  "B2B2C": [
+    "Polco"
+  ],
+  "local government": [
+    "Polco"
+  ],
+  "state government": [
+    "Polco"
+  ],
+  "federal government": [
+    "Polco"
+  ],
+  "tokenization": [
+    "ProfitR"
+  ],
+  "real world assets": [
+    "ProfitR"
+  ],
+  "investment": [
+    "ProfitR"
+  ],
+  "finance": [
+    "ProfitR"
+  ],
+  "customer engagement": [
+    "RepeatMD",
+    "Volt"
+  ],
+  "aesthetics": [
+    "RepeatMD"
+  ],
+  "returns management": [
+    "ReturnLogic"
+  ],
+  "retail": [
+    "ReturnLogic"
+  ],
+  "customer experience": [
+    "ReturnLogic"
+  ],
+  "clinical research": [
+    "Ripple Science"
+  ],
+  "participant management": [
+    "Ripple Science"
+  ],
+  "API": [
+    "Satsuma"
+  ],
+  "food delivery": [
+    "Satsuma"
+  ],
+  "ecommerce": [
+    "Satsuma"
+  ],
+  "restaurant technology": [
+    "Satsuma"
+  ],
+  "grocery delivery": [
+    "Satsuma"
+  ],
+  "Food Tech": [
+    "Satsuma"
+  ],
+  "data platform": [
+    "Predactiv"
+  ],
+  "first-party data": [
+    "Predactiv"
+  ],
+  "third-party data": [
+    "Predactiv"
+  ],
+  "advanced insights": [
+    "Predactiv"
+  ],
+  "customized audiences": [
+    "Predactiv"
+  ],
+  "MarTech": [
+    "Predactiv",
+    "Volt"
+  ],
+  "manufacturing": [
+    "Sight Machine"
+  ],
+  "data insights": [
+    "Sight Machine"
+  ],
+  "industry 4.0": [
+    "Sight Machine"
+  ],
+  "Manufacturing": [
+    "Sight Machine"
+  ],
+  "financial products": [
+    "Signal Advisors"
+  ],
+  "retirees": [
+    "Signal Advisors"
+  ],
+  "distribution": [
+    "Signal Advisors"
+  ],
+  "advisory services": [
+    "Signal Advisors"
+  ],
+  "HVAC": [
+    "SmartAC"
+  ],
+  "customer retention": [
+    "SmartAC"
+  ],
+  "service optimization": [
+    "SmartAC"
+  ],
+  "Home Services": [
+    "SmartAC"
+  ],
+  "mobile concierge": [
+    "Spruce"
+  ],
+  "apartment living": [
+    "Spruce"
+  ],
+  "hospitality technology": [
+    "Spruce"
+  ],
+  "resident services": [
+    "Spruce"
+  ],
+  "property management": [
+    "Spruce"
+  ],
+  "PropTech": [
+    "Spruce"
+  ],
+  "space station": [
+    "Starlab Space"
+  ],
+  "research": [
+    "Starlab Space"
+  ],
+  "scientific exploration": [
+    "Starlab Space"
+  ],
+  "Aerospace": [
+    "Starlab Space",
+    "Venus Aerospace"
+  ],
+  "small businesses": [
+    "Trava"
+  ],
+  "SMBs": [
+    "Trava",
+    "WizeHire"
+  ],
+  "beauty products": [
+    "Upgrade"
+  ],
+  "online marketplace": [
+    "Upgrade"
+  ],
+  "digital services": [
+    "Upgrade"
+  ],
+  "retail technology": [
+    "Upgrade"
+  ],
+  "hypersonic": [
+    "Venus Aerospace"
+  ],
+  "aerospace": [
+    "Venus Aerospace"
+  ],
+  "engine technology": [
+    "Venus Aerospace"
+  ],
+  "venture-backed": [
+    "Venus Aerospace"
+  ],
+  "startup": [
+    "Venus Aerospace"
+  ],
+  "SMS marketing": [
+    "Volt"
+  ],
+  "customer acquisition": [
+    "Volt"
+  ],
+  "marketing technology": [
+    "Volt"
+  ],
+  "B2B services": [
+    "Volt"
+  ],
+  "voice-activated": [
+    "Voze"
+  ],
+  "CRM": [
+    "Voze"
+  ],
+  "industrial sales": [
+    "Voze"
+  ],
+  "management system": [
+    "WizeHire"
+  ],
+  "hiring": [
+    "WizeHire"
+  ],
+  "HR Tech": [
+    "WizeHire"
+  ]
+}
