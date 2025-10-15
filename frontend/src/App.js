@@ -98,9 +98,7 @@ function App() {
             <Typography variant="h4" gutterBottom>
               Search System
             </Typography>
-            <Typography variant="body1" color="text.secondary" paragraph>
-              Intelligent search with portfolio company context and competitive intelligence
-            </Typography>
+      
 
             <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
               <TextField
