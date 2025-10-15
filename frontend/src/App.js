@@ -44,7 +44,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 function App() {
   const [query, setQuery] = useState('');
   const [includeWeb, setIncludeWeb] = useState(true);
-  const [limit, setLimit] = useState(10);
+  // Remove limit state and field
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
@@ -62,7 +62,7 @@ function App() {
       const searchResponse = await axios.post(`${API_BASE_URL}/search`, {
         query: query,
         include_web: includeWeb,
-        limit: parseInt(limit),
+        limit: 7,
         generate_insights: true
       });
 
@@ -134,15 +134,7 @@ function App() {
                 }
                 label="Include Live Web Results"
               />
-              <TextField
-                type="number"
-                label="Results Limit"
-                value={limit}
-                onChange={(e) => setLimit(e.target.value)}
-                disabled={loading}
-                sx={{ width: 150 }}
-                inputProps={{ min: 1, max: 50 }}
-              />
+              {/* Remove the TextField component for limit */}
             </Box>
           </Paper>
 
