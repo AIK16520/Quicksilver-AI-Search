@@ -48,7 +48,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
-  const [queryType, setQueryType] = useState(null);
+  // Query type detection happens in backend but not displayed in UI
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -58,13 +58,7 @@ function App() {
     setResults(null);
 
     try {
-      // First detect query type
-      const queryTypeResponse = await axios.post(`${API_BASE_URL}/query-type`, {
-        query: query
-      });
-      setQueryType(queryTypeResponse.data);
-
-      // Then perform search
+      // Perform search (query type detection happens in backend for logging)
       const searchResponse = await axios.post(`${API_BASE_URL}/search`, {
         query: query,
         include_web: includeWeb,
@@ -93,11 +87,9 @@ function App() {
         <AppBar position="static">
           <Toolbar>
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              🚀 Quicksilver Search
+               Quicksilver Search
             </Typography>
-            <Typography variant="subtitle2">
-              VC Intelligence Platform
-            </Typography>
+           
           </Toolbar>
         </AppBar>
 
@@ -154,30 +146,7 @@ function App() {
             </Box>
           </Paper>
 
-          {queryType && (
-            <Paper sx={{ p: 2, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Query Analysis
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <Chip
-                  label={`Mode: ${queryType.mode.replace('_', ' ').toUpperCase()}`}
-                  color="primary"
-                  variant="outlined"
-                />
-                {queryType.entity && (
-                  <Chip
-                    label={`Focus: ${queryType.entity}`}
-                    color="secondary"
-                    variant="outlined"
-                  />
-                )}
-              </Box>
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                {queryType.description}
-              </Typography>
-            </Paper>
-          )}
+          {/* Query analysis removed from UI - kept for backend logging only */}
 
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
@@ -198,7 +167,11 @@ function App() {
                   {results.insights.summary && (
                     <Box sx={{ mb: 3 }}>
                       <Typography variant="body1" component="div">
-                        <div dangerouslySetInnerHTML={{ __html: results.insights.summary.replace(/\n/g, '<br>') }} />
+                        <div dangerouslySetInnerHTML={{
+                          __html: results.insights.summary
+                            .replace(/\n/g, '<br>')
+                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        }} />
                       </Typography>
                     </Box>
                   )}
@@ -286,3 +259,4 @@ function App() {
 }
 
 export default App;
+

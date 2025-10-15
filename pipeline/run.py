@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from pipeline import Pipeline
-from config import supabase_client
+from core.config import supabase_client
 
 # Configure logging
 LOG_DIR = Path(__file__).parent / "logs"

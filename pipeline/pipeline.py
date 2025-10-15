@@ -1,12 +1,17 @@
 # pipeline.py
+import sys
+from pathlib import Path
 
+# Add the parent directory to Python path
+parent_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(parent_dir))
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
-from storage import StorageManager
+from core.storage import StorageManager
 from parsers.parserFactory import ParserFactory
-from models import RawArticle
+from core.models import RawArticle
 
 logger = logging.getLogger("pipeline")
 logging.basicConfig(level=logging.INFO)

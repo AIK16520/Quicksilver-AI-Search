@@ -15,7 +15,16 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config import supabase_client, OPENAI_API_KEY, BRAVE_API_KEY, EMBEDDING_MODEL, GPT_MODEL
 from search.search import SearchService
+from fastapi.responses import FileResponse, Response
 
+@app.get("/favicon.png", include_in_schema=False)
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    import os
+    favicon_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "public", "favicon.ico")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path)
+    return Response(status_code=204)
 # Check if supabase client is available
 if supabase_client is None:
     print("Warning: Supabase client not available. Database features will not work.")

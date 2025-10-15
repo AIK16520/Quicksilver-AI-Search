@@ -776,7 +776,7 @@ class SearchService:
 
         # Add database results
         if db_results:
-            context_parts.append("### Curated Database Results:")
+            context_parts.append(" Curated Database Results:")
             for idx, item in enumerate(db_results[:5], 1):
                 context_parts.append(f"\n{idx}. {item['title']}")
                 if item.get('company_names'):
@@ -786,7 +786,7 @@ class SearchService:
 
         # Add web results
         if web_results:
-            context_parts.append("\n\n### Live Web Results:")
+            context_parts.append("\n\n Live Web Results:")
             for idx, item in enumerate(web_results[:5], 1):
                 context_parts.append(f"\n{idx}. {item['title']}")
                 context_parts.append(f"   {item['description']}")
@@ -798,100 +798,61 @@ class SearchService:
         # Build mode-specific prompt
         base_instruction = "You are a senior VC analyst providing actionable intelligence. Focus on specific developments that could help or hurt portfolio companies. Be concrete, not generic. If no specific developments found, acknowledge but still provide strategic market overview."
 
-        if mode == "portfolio_mode":
-            mode_instruction = """
-PRIORITY: Find specific news/updates about our portfolio companies.
-If none found, clearly state: "No portfolio-specific updates found, but here's market context."
-Focus on actionable intelligence: funding rounds, product launches, partnerships, competitive moves, regulatory changes.
+        # Get portfolio companies for context
+        portfolio_companies = self._get_portfolio_companies()
+        portfolio_names = [c['company_name'] for c in portfolio_companies]
+
+        # Common instruction for all modes
+        mode_instruction = """
+PRIORITY: Focus on developments that could impact our portfolio companies.
+If no portfolio-specific updates found, clearly state this but provide relevant market context.
+Be specific about which portfolio companies might find this interesting.
 """
-            sections = """
-1. PORTFOLIO UPDATES (Be specific - name companies and developments)
-   - Which portfolio companies have news? What specific developments?
+
+        # Standard structure for all modes - using bold formatting instead of hashtags
+        sections = """
+**1. PORTFOLIO UPDATES**
+   - Which of our portfolio companies have relevant news? Be specific.
    - Any funding rounds, product launches, or strategic moves?
 
-2. COMPETITIVE INTELLIGENCE
+**2. COMPETITIVE UPDATES**
    - What's happening with competitors that could affect our portfolio?
-   - Any new entrants, market shifts, or threats/opportunities?
+   - Any new entrants, market shifts, or competitive moves?
 
-3. STRATEGIC RECOMMENDATIONS
-   - What should we do? Which portfolio companies need attention?
-   - Any follow-up actions, introductions, or strategy adjustments?
-"""
+**3. TECH DEVELOPMENTS IN RELATED INDUSTRIES**
+   - What new technologies or innovations are emerging that our portfolio companies should know about?
+   - Any tech trends that could create opportunities or threats?
 
-        elif mode == "industry_mode":
-            industry = context.get('industry', 'the industry')
-            portfolio_companies = context.get('relevant_companies', [])
-            portfolio_names = [c['company_name'] for c in portfolio_companies] if portfolio_companies else []
+**4. BUSINESS DEVELOPMENTS IN RELATED INDUSTRIES**
+   - What business model changes, partnerships, or market expansions are happening?
+   - Any regulatory changes, M&A activity, or funding trends that matter?
 
-            mode_instruction = f"""
-Industry analysis for: {industry}
-PRIORITY: Specific developments that could help/hurt our portfolio companies: {', '.join(portfolio_names[:3])}
-Focus on concrete examples like "new algo matching tech for riders/restaurants" or "regulatory changes affecting delivery logistics".
-If no specific developments found, say so but provide strategic market overview.
-"""
-            sections = """
-1. SPECIFIC DEVELOPMENTS (Be concrete - name companies and specific tech/changes)
-   - What new technologies, products, or business models are emerging?
-   - Any regulatory changes, funding rounds, or competitive moves that matter?
-
-2. PORTFOLIO COMPANY IMPACT
-   - How do these developments affect our portfolio companies specifically?
-   - Any opportunities for our companies to adopt new approaches?
-
-3. COMPETITIVE LANDSCAPE
-   - Who's winning and why? Any new entrants disrupting the space?
-   - How should our portfolio companies respond?
-
-4. STRATEGIC RECOMMENDATIONS
-   - What should we advise our portfolio companies to do?
+**5. PORTFOLIO COMPANY IMPLICATIONS**
+   - Which specific portfolio companies should pay attention to these developments?
+   - What actions should we recommend to our portfolio companies?
    - Any follow-up actions for the VC team?
-"""
 
-        elif mode == "company_mode":
-            company = context.get('company', 'the company')
-            mode_instruction = f"""
-Deep dive on: {company}
-Be specific about developments that matter for investment decisions.
-Include concrete examples like "launched new AI matching algorithm" or "raised $X for market expansion".
-"""
-            sections = """
-1. RECENT DEVELOPMENTS (Be specific - what happened and when?)
-   - Major product launches, funding rounds, partnerships, or strategic moves
-   - Market traction, user growth, revenue milestones
-
-2. COMPETITIVE POSITION
-   - How is this company positioned vs competitors?
-   - Any competitive advantages or vulnerabilities?
-
-3. PORTFOLIO IMPLICATIONS
-   - If this is our portfolio company: what should we do?
-   - If this is a competitor: how does it affect our investments?
-   - Any follow-up actions needed?
-"""
-
-        else:
-            # Fallback to original prompt
-            mode_instruction = ""
-            sections = """
-1. EXECUTIVE SUMMARY (2-3 sentences)
-2. KEY TRENDS & INSIGHTS
-3. COMPANIES TO WATCH
-4. INVESTMENT IMPLICATIONS
-"""
+IMPORTANT: When mentioning company names in your response, format them in bold like **CompanyName**."""
 
         prompt = f"""{base_instruction}
 
 {mode_instruction}
 
+PORTFOLIO CONTEXT: Our portfolio companies include: {', '.join(portfolio_names[:10])}
+{' and others...' if len(portfolio_names) > 10 else ''}
+
 Query: "{query}"
 
-CRITICAL: Focus on SPECIFIC, RECENT developments. Look for concrete examples like:
+CRITICAL: Focus on SPECIFIC, RECENT developments that could impact our portfolio companies.
+Look for concrete examples like:
 - "DoorDash launched new AI algorithm that reduced delivery times by 15%"
 - "Uber Eats raised $200M for market expansion in Asia"
 - "New regulation requiring all delivery apps to show carbon footprint"
 - "Stripe launched embedded payments for food delivery platforms"
 
-If search results are generic trends, acknowledge this but extract any specific company moves or product launches.
+If search results are generic trends, acknowledge this but extract any specific company moves or product launches that could affect our portfolio.
+
+PRIORITY: Always mention which of our portfolio companies (if any) might find this development particularly interesting or concerning.
 
 Based on these search results, provide analysis:
 
@@ -901,7 +862,7 @@ Structure your response exactly as requested:
 
 {sections}
 
-Be concrete and actionable for VC portfolio management. Avoid generic statements."""
+Be concrete and actionable for VC portfolio management. Avoid generic statements. If no portfolio-specific updates found, clearly state this but still provide relevant market intelligence that our portfolio companies should know about."""
 
         try:
             response = self.openai_client.chat.completions.create(
@@ -946,18 +907,16 @@ Be concrete and actionable for VC portfolio management. Avoid generic statements
         print(f"SEARCH RESULTS: '{results['query']}'")
         print("="*80)
 
-        # Show detected mode and context
+        # Log mode for debugging (don't show to user)
         if results.get('mode'):
-            mode_label = results['mode'].replace('_', ' ').title()
-            print(f"\nMode: {mode_label}")
+            logger.info(f"Search mode: {results['mode']}")
             if results.get('context', {}).get('description'):
-                print(f"Context: {results['context']['description']}")
-            print()
+                logger.info(f"Search context: {results['context']['description']}")
 
         # Display AI insights first (most important for VCs)
         if results.get('insights') and show_full_insights:
             print("\n" + "="*80)
-            print("VC ACTIONABLE INSIGHTS")
+            print("PORTFOLIO-FOCUSED MARKET INTELLIGENCE")
             print("="*80)
             if results['insights'].get('summary'):
                 print(results['insights']['summary'])

@@ -16,8 +16,8 @@ from selenium.common.exceptions import TimeoutException
 import logging
 from typing import List, Optional
 from datetime import datetime
-from models import RawArticle
-from storage import StorageManager
+from core.models import RawArticle
+from core.storage import StorageManager
 
 class BeehiveScraper:
     def __init__(self, newsletter_id: str, url: str, config: dict):
@@ -35,18 +35,30 @@ class BeehiveScraper:
     def create_webdriver_instance(self):
         chrome_options = Options()
         
-        if self.headless:
-            chrome_options.add_argument("--headless")
         
-        chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--start-maximized")
-        chrome_options.add_argument("--disable-infobars")
-        chrome_options.add_argument("--disable-extensions")
         chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--remote-debugging-port=9222")
-        
-        service = Service(ChromeDriverManager().install())
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-gpu")
+
+        try:
+            # Try using the manually downloaded ChromeDriver first
+            chromedriver_path = r"C:\Users\Ali Imran\.wdm\drivers\chromedriver\win64\141.0.7390.78\chromedriver-win32\chromedriver.exe"
+            print(f"Trying to use existing ChromeDriver at: {chromedriver_path}")
+
+            # Check if the file exists
+            import os
+            if os.path.exists(chromedriver_path):
+                print("Found existing ChromeDriver, using it directly...")
+                service = Service(chromedriver_path)
+            else:
+                print("ChromeDriver not found at expected path, downloading...")
+                service = Service(ChromeDriverManager().install())
+
+        except Exception as e:
+            print(f"Error: ChromeDriver setup failed: {e}")
+            raise e
+
         driver = webdriver.Chrome(service=service, options=chrome_options)
         
         return driver

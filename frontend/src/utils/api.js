@@ -47,3 +47,4 @@ export const searchAPI = {
 };
 
 export default searchAPI;
+

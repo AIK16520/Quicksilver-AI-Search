@@ -5,8 +5,8 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from supabase import Client
 
-from config import supabase_client
-from models import ProcessedArticle, Chunk
+from core.config import supabase_client
+from core.models import ProcessedArticle, Chunk
 
 logger = logging.getLogger("storage")
 logging.basicConfig(level=logging.INFO)
