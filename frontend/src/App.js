@@ -152,7 +152,7 @@ function App() {
               {results.insights && (
                 <Paper sx={{ p: 3, mb: 3 }}>
                   <Typography variant="h5" gutterBottom>
-                    VC ACTIONABLE INSIGHTS
+                    INSIGHTS
                   </Typography>
                   <Divider sx={{ mb: 2 }} />
 

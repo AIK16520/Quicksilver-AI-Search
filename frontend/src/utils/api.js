@@ -39,6 +39,23 @@ export const searchAPI = {
     return response.data;
   },
 
+  // Enhanced competitor analysis with discovery
+  analyzeCompetitors: async (query, options = {}) => {
+    const {
+      includeDiscovery = true,
+      config = null,
+      searchDepth = "moderate"
+    } = options;
+
+    const response = await axios.post(`${API_BASE_URL}/analyze-competitors`, {
+      query,
+      include_discovery: includeDiscovery,
+      config,
+      search_depth: searchDepth
+    });
+    return response.data;
+  },
+
   // Health check
   healthCheck: async () => {
     const response = await axios.get(`${API_BASE_URL}/health`);

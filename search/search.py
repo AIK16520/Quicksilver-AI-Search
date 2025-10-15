@@ -11,6 +11,8 @@ from difflib import get_close_matches
 
 from openai import OpenAI
 from core.config import supabase_client, OPENAI_API_KEY, BRAVE_API_KEY, EMBEDDING_MODEL, GPT_MODEL
+from .competitor_discovery import CompetitorDiscoveryService, DiscoveredCompetitor
+from .competitor_config import CompetitorDiscoveryConfig, MODERATE_DISCOVERY
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("search")
@@ -30,6 +32,9 @@ class SearchService:
         self.supabase = supabase_client
         self.openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
         self.brave_key = BRAVE_API_KEY
+
+        # Initialize competitor discovery service with default configuration
+        self.competitor_discovery = CompetitorDiscoveryService(MODERATE_DISCOVERY)
 
         # Cache portfolio companies for faster lookups
         self._portfolio_cache = None
@@ -898,6 +903,122 @@ Be concrete and actionable for VC portfolio management. Avoid generic statements
                 'error': str(e),
                 'generated_at': datetime.now().isoformat()
             }
+
+    def analyze_competitors_enhanced(
+        self,
+        query: str,
+        config: CompetitorDiscoveryConfig = None,
+        include_discovery: bool = True
+    ) -> Dict:
+        """
+        Enhanced competitor analysis that includes both mapped competitors and newly discovered ones
+
+        Args:
+            query: The search query or company name to analyze competitors for
+            config: Configuration for competitor discovery behavior (uses default if None)
+            include_discovery: Whether to include competitor discovery (beyond mapped competitors)
+
+        Returns:
+            Dictionary with:
+            - mapped_competitors: Competitors already in portfolio map
+            - discovered_competitors: Newly discovered competitors
+            - all_competitors: Combined list for convenience
+        """
+        logger.info(f"Starting enhanced competitor analysis for: {query}")
+
+        # Use provided config or default
+        discovery_config = config or self.competitor_discovery.config
+
+        # First, get the query type and matched entity
+        mode, matched_entity = self._detect_query_type(query)
+
+        mapped_competitors = []
+        discovered_competitors = []
+
+        if mode == "company_mode" and matched_entity:
+            # Get competitors for a specific portfolio company
+            company_data = self._find_company_by_name(matched_entity)
+            if company_data and company_data.get('competitors'):
+                mapped_competitors = company_data['competitors'].split(', ')
+
+            # Extract keywords and industries from the company for discovery
+            if company_data:
+                keywords = company_data.get('keywords', '').split(', ') if company_data.get('keywords') else []
+                industries = [company_data.get('industry', '')] if company_data.get('industry') else []
+
+                if include_discovery and (keywords or industries):
+                    # Discover new competitors using the company's keywords and industry
+                    existing_competitor_names = set(mapped_competitors)
+                    discovered_competitors = self.competitor_discovery.discover_competitors(
+                        keywords=keywords,
+                        industries=industries,
+                        existing_competitors=existing_competitor_names,
+                        config=discovery_config
+                    )
+
+        elif mode == "industry_mode" and matched_entity:
+            # Get companies in the specified industry
+            industry_companies = self._find_companies_by_industry(matched_entity)
+            company_names = [c['company_name'] for c in industry_companies]
+
+            # For industry queries, we'll use the industry as the search signal for discovery
+            if include_discovery:
+                existing_competitor_names = set(company_names)
+                discovered_competitors = self.competitor_discovery.discover_competitors(
+                    keywords=[matched_entity],  # Use industry as keyword
+                    industries=[matched_entity],
+                    existing_competitors=existing_competitor_names,
+                    config=discovery_config
+                )
+
+            # Return industry companies as mapped competitors
+            mapped_competitors = company_names
+
+        # Convert discovered competitors to simple dict format for API compatibility
+        discovered_competitors_simple = [
+            {
+                'name': comp.name,
+                'industry': comp.industry,
+                'keywords': comp.keywords,
+                'description': comp.description,
+                'confidence_score': comp.confidence_score,
+                'source_url': comp.source_url,
+                'search_signal': comp.search_signal,
+                'is_discovered': True  # Flag to distinguish from mapped competitors
+            }
+            for comp in discovered_competitors
+        ]
+
+        # Combine all competitors
+        all_competitors = mapped_competitors + [comp['name'] for comp in discovered_competitors_simple]
+
+        result = {
+            'query': query,
+            'mode': mode,
+            'matched_entity': matched_entity,
+            'mapped_competitors': mapped_competitors,
+            'discovered_competitors': discovered_competitors_simple,
+            'all_competitors': all_competitors,
+            'total_mapped': len(mapped_competitors),
+            'total_discovered': len(discovered_competitors_simple),
+            'total_competitors': len(all_competitors)
+        }
+
+        logger.info(f"Enhanced competitor analysis complete: {result['total_mapped']} mapped, {result['total_discovered']} discovered")
+        return result
+
+    def _find_company_by_name(self, company_name: str) -> Optional[Dict]:
+        """Helper method to find a company by name"""
+        companies = self._get_portfolio_companies()
+        for company in companies:
+            if company['company_name'].lower() == company_name.lower():
+                return company
+        return None
+
+    def _find_companies_by_industry(self, industry: str) -> List[Dict]:
+        """Helper method to find companies by industry"""
+        companies = self._get_portfolio_companies()
+        return [c for c in companies if c.get('industry', '').lower() == industry.lower()]
 
     def display_results(self, results: Dict, show_full_insights: bool = True):
         """

@@ -15,6 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config import supabase_client, OPENAI_API_KEY, BRAVE_API_KEY, EMBEDDING_MODEL, GPT_MODEL
 from search.search import SearchService
+from search.competitor_config import CompetitorDiscoveryConfig
 from fastapi.responses import FileResponse, Response
 
 
@@ -74,6 +75,23 @@ class ContextResponse(BaseModel):
     keywords: List[str]
     description: str
     mode: str
+
+class CompetitorAnalysisRequest(BaseModel):
+    query: str
+    include_discovery: bool = True
+    config: Optional[Dict[str, Any]] = None
+    search_depth: str = "moderate"
+
+class CompetitorAnalysisResponse(BaseModel):
+    query: str
+    mode: str
+    matched_entity: Optional[str]
+    mapped_competitors: List[str]
+    discovered_competitors: List[Dict[str, Any]]
+    all_competitors: List[str]
+    total_mapped: int
+    total_discovered: int
+    total_competitors: int
 @app.get("/favicon.ico", include_in_schema=False)
 @app.get("/favicon.png", include_in_schema=False)
 def favicon():
@@ -93,6 +111,7 @@ async def root():
             "search": "/search (POST) - Perform intelligent search",
             "query-type": "/query-type (POST) - Detect query intent",
             "context": "/context (POST) - Build search context",
+            "analyze-competitors": "/analyze-competitors (POST) - Enhanced competitor analysis with discovery",
             "health": "/health (GET) - Health check"
         }
     }
@@ -181,6 +200,35 @@ async def get_portfolio_maps():
             "sample_keywords": search_service.all_keywords[:10],
             "sample_industries": search_service.all_industries[:5]
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/analyze-competitors", response_model=CompetitorAnalysisResponse)
+async def analyze_competitors(request: CompetitorAnalysisRequest):
+    """Enhanced competitor analysis with competitor discovery"""
+    try:
+        # Convert config dict to CompetitorDiscoveryConfig if provided
+        config = None
+        if request.config:
+            config = CompetitorDiscoveryConfig(**request.config)
+
+        results = search_service.analyze_competitors_enhanced(
+            query=request.query,
+            config=config,
+            include_discovery=request.include_discovery
+        )
+
+        return CompetitorAnalysisResponse(
+            query=results['query'],
+            mode=results['mode'],
+            matched_entity=results['matched_entity'],
+            mapped_competitors=results['mapped_competitors'],
+            discovered_competitors=results['discovered_competitors'],
+            all_competitors=results['all_competitors'],
+            total_mapped=results['total_mapped'],
+            total_discovered=results['total_discovered'],
+            total_competitors=results['total_competitors']
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
