@@ -169,8 +169,12 @@ function App() {
                       <Typography variant="body1" component="div">
                         <div dangerouslySetInnerHTML={{
                           __html: results.insights.summary
-                            .replace(/\n/g, '<br>')
+                            // Convert markdown headings to bold and remove hashtags
+                            .replace(/^(#+)\s*(.*?)(<br>|\n|$)/gm, '<strong>$2</strong><br>')
+                            // Convert **bold** markdown to <strong>
                             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                            // Convert remaining newlines to <br>
+                            .replace(/\n/g, '<br>')
                         }} />
                       </Typography>
                     </Box>
