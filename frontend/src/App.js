@@ -96,7 +96,7 @@ function App() {
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
           <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h4" gutterBottom>
-              VC-Focused Search System
+              Search System
             </Typography>
             <Typography variant="body1" color="text.secondary" paragraph>
               Intelligent search with portfolio company context and competitive intelligence
