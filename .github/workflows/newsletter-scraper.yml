@@ -2,15 +2,15 @@ name: Newsletter Scraper
 
 on:
   schedule:
-    # Daily at 9 AM UTC (runs both Product Hunt + Beehive newsletters)
+
     - cron: '0 9 * * *'
-    # Monthly on 1st at 2 AM UTC (runs both with monthly Product Hunt)
+
     - cron: '0 2 1 * *'
   workflow_dispatch: # Allow manual runs
 
 jobs:
   daily-scrape:
-    if: github.event.schedule == '0 9 * * *'
+    if: github.event.schedule == '0 9 * * *'|| github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +44,7 @@ jobs:
           path: pipeline/logs/
 
   monthly-scrape:
-    if: github.event.schedule == '0 2 1 * *'
+    if: github.event.schedule == '0 2 1 * *'|| github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
