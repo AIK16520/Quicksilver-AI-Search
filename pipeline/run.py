@@ -56,6 +56,12 @@ def main():
         action='store_true',
         help='Test mode with verbose logging'
     )
+    
+    parser.add_argument(
+        '--monthly',
+        action='store_true',
+        help='For Product Hunt: fetch monthly top products (default: daily)'
+    )
 
     args = parser.parse_args()
 
@@ -68,16 +74,28 @@ def main():
     logger.info("Quicksilver Newsletter Scraper Starting")
     logger.info(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     logger.info(f"Mode: {'BACKFILL' if args.backfill else 'INCREMENTAL'}")
+    if args.monthly:
+        logger.info("Product Hunt: MONTHLY top products (last 30 days)")
+    else:
+        logger.info("Product Hunt: Top products (last 2 days)")
     logger.info("="*70)
 
     try:
         # Test Supabase connection
         logger.info("Testing Supabase connection...")
         supabase_client.table('newsletters').select('id').limit(1).execute()
-        logger.info(" Supabase connection successful\n")
+        logger.info("Supabase connection successful\n")
 
         # Initialize pipeline
         pipeline = Pipeline()
+        
+        # Build runtime config for Product Hunt
+        import os
+        runtime_config = {
+            'limit': 100 if args.monthly else 50,
+            'days_back': 30 if args.monthly else 2,  # 2 days for default mode, 30 days for monthly
+            'api_token': os.getenv('PRODUCTHUNT_API_TOKEN', 'fF5l782F-LB-w0KqzIfovrHZGkqD5K8F8I3WgpsP_Rw')
+        }
 
         # Process newsletters
         if args.newsletter_id:
@@ -89,9 +107,12 @@ def main():
             )
             results = [stats]
         else:
-            # Process all active newsletters
-            logger.info("Processing all active newsletters\n")
-            results = pipeline.process_all_active(backfill=args.backfill)
+            # Process all newsletters
+            logger.info("Processing all newsletters\n")
+            results = pipeline.process_all_active(
+                backfill=args.backfill,
+                runtime_config=runtime_config
+            )
 
         # Summary
         logger.info("\n" + "="*70)

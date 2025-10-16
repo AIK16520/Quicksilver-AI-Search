@@ -3,6 +3,7 @@
 from typing import Dict
 # from parsers.rss_parser import RSSParser
 from parsers.beehive import BeehiveScraper
+from parsers.productHunt import ProductHuntScraper
 
 
 class ParserFactory:
@@ -37,6 +38,9 @@ class ParserFactory:
         if source_type == 'beehive':
             return BeehiveScraper(newsletter_id, url, config)
         
+        elif source_type == 'producthunt':
+            return ProductHuntScraper(newsletter_id, url, config)
+        
         # Future parser types:
         # elif source_type == 'web':
         #     return WebParser(newsletter_id, url, config)
@@ -50,7 +54,7 @@ class ParserFactory:
         else:
             raise ValueError(
                 f"Unknown source type: '{source_type}'. "
-                f"Supported types: , 'beehive'"
+                f"Supported types: 'beehive', 'producthunt'"
             )
     
     @staticmethod
@@ -61,4 +65,4 @@ class ParserFactory:
         Returns:
             List of supported source type strings
         """
-        return ['beehive']
+        return ['beehive', 'producthunt']

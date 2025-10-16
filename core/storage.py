@@ -73,7 +73,7 @@ class StorageManager:
     
     def get_active_newsletters(self) -> List[Dict[str, Any]]:
         """
-        Get all active newsletters.
+        Get all newsletters (no is_active filter since column doesn't exist).
         
         Returns:
             List of newsletter dictionaries
@@ -85,6 +85,10 @@ class StorageManager:
         except Exception as e:
             logger.error(f"Failed to get newsletters: {e}")
             return []
+    
+    def get_all_newsletters(self) -> List[Dict[str, Any]]:
+        """Alias for get_active_newsletters (for backwards compatibility)"""
+        return self.get_active_newsletters()
     
     def update_newsletter_scraped(self, newsletter_id: str) -> bool:
         """
@@ -175,7 +179,162 @@ class StorageManager:
         except Exception as e:
             logger.error(f"Failed to store article {raw_article_dict.get('title')}: {e}")
             return None
-    
+
+    def product_hunt_exists(self, producthunt_link: str) -> bool:
+        """
+        Check if product with this Product Hunt URL already exists.
+        Prevents duplicate processing.
+
+        Args:
+            producthunt_link: Product Hunt URL
+
+        Returns:
+            True if exists, False otherwise
+        """
+        try:
+            response = self.supabase.table('product_hunt_products').select('id').eq('producthunt_link', producthunt_link).execute()
+            return len(response.data) > 0
+
+        except Exception as e:
+            logger.error(f"Failed to check product existence for {producthunt_link}: {e}")
+            # On error, assume it doesn't exist (safer to reprocess than skip)
+            return False
+
+    def store_product_hunt(self, product_data: Dict[str, Any]) -> Optional[str]:
+        """
+        Store Product Hunt product to database with AI features.
+
+        Args:
+            product_data: Dict with product_name, producthunt_link, overview, description, 
+                         product_link, ai_description, embedding, keywords, scraped_at
+
+        Returns:
+            Product UUID if successful, None otherwise
+        """
+        try:
+            # Prepare the data for insertion
+            insert_data = {
+                'product_name': product_data.get('product_name', ''),
+                'producthunt_link': product_data.get('producthunt_link'),
+                'overview': product_data.get('overview'),
+                'description': product_data.get('description'),
+                'product_link': product_data.get('product_link'),
+                'ai_description': product_data.get('ai_description'),
+                'scraped_at': product_data.get('scraped_at', datetime.now().isoformat())
+            }
+            
+            # Add embedding if available
+            if 'embedding' in product_data and product_data['embedding']:
+                insert_data['embedding'] = product_data['embedding']
+            
+            # Add keyword embedding if available
+            if 'keyword_embedding' in product_data and product_data['keyword_embedding']:
+                insert_data['keyword_embedding'] = product_data['keyword_embedding']
+            
+            # Add keywords if available
+            if 'keywords' in product_data and product_data['keywords']:
+                insert_data['keywords'] = product_data['keywords']
+
+            # Use upsert to handle duplicates (update if exists, insert if not)
+            response = self.supabase.table('product_hunt_products').upsert(
+                insert_data,
+                on_conflict='producthunt_link'
+            ).execute()
+
+            if response.data and len(response.data) > 0:
+                product_id = response.data[0]['id']
+                logger.info(f"✓ Stored product: {product_data['product_name']} (ID: {product_id})")
+                return product_id
+            else:
+                logger.error(f"Failed to store product: {product_data.get('product_name')}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Failed to store product {product_data.get('product_name')}: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
+    def store_products_batch(self, products: List[Dict[str, Any]]) -> int:
+        """
+        Alias for store_product_hunt_batch for backwards compatibility.
+        """
+        return self.store_product_hunt_batch(products)
+
+    def store_product_hunt_batch(self, products: List[Dict[str, Any]]) -> int:
+        """
+        Store multiple Product Hunt products in batch with AI features.
+        Uses upsert to handle duplicates efficiently.
+
+        Args:
+            products: List of product dictionaries
+
+        Returns:
+            Number of products successfully stored
+        """
+        if not products:
+            return 0
+
+        try:
+            # Prepare all products for batch insert
+            batch_data = []
+            seen_links = set()
+            
+            for product in products:
+                # Remove metadata field if present (not stored in DB)
+                product_clean = {k: v for k, v in product.items() if k != '_metadata'}
+                
+                # Skip duplicates within the batch
+                link = product_clean.get('producthunt_link')
+                if link in seen_links:
+                    logger.warning(f"Skipping duplicate in batch: {link}")
+                    continue
+                seen_links.add(link)
+                
+                insert_data = {
+                    'product_name': product_clean.get('product_name', ''),
+                    'producthunt_link': link,
+                    'overview': product_clean.get('overview'),
+                    'description': product_clean.get('description'),
+                    'product_link': product_clean.get('product_link'),
+                    'ai_description': product_clean.get('ai_description'),
+                    'scraped_at': product_clean.get('scraped_at', datetime.now().isoformat())
+                }
+                
+                # Add embedding if available
+                if 'embedding' in product_clean and product_clean['embedding']:
+                    insert_data['embedding'] = product_clean['embedding']
+                
+                # Add keyword embedding if available
+                if 'keyword_embedding' in product_clean and product_clean['keyword_embedding']:
+                    insert_data['keyword_embedding'] = product_clean['keyword_embedding']
+                
+                # Add keywords if available
+                if 'keywords' in product_clean and product_clean['keywords']:
+                    insert_data['keywords'] = product_clean['keywords']
+                
+                batch_data.append(insert_data)
+
+            # Batch upsert
+            response = self.supabase.table('product_hunt_products').upsert(
+                batch_data,
+                on_conflict='producthunt_link'
+            ).execute()
+
+            if response.data:
+                stored_count = len(response.data)
+                logger.info(f"✓ Batch stored {stored_count} products")
+                return stored_count
+            else:
+                logger.error("Failed to batch store products")
+                return 0
+
+        except Exception as e:
+            logger.error(f"Failed to batch store products: {e}")
+            import traceback
+            traceback.print_exc()
+            return 0
+
     def store_chunks(self, chunks: List[Chunk], article_id: str) -> bool:
         """
         Store multiple chunks for an article.

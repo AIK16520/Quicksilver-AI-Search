@@ -364,18 +364,12 @@ Key Findings by Dimension:
 Based on this market intelligence analysis, provide:
 
 1. EXECUTIVE SUMMARY (2-3 sentences): High-level overview of the space and market dynamics
-2. KEY PLAYERS (list 5-7 SOFTWARE/PLATFORM companies with brief descriptions of what they do)
+2. KEY PLAYERS (list 5-7 companies with brief descriptions of what they do)
 3. EMERGING TRENDS (list 3-5 key trends or innovations in the market)
 4. RECOMMENDED NEXT STEPS (list 3-4 specific things to research deeper)
 
-CRITICAL RULES:
-- Focus on PROVIDER companies (those that make/sell the product), NOT customer companies (those that use it)
-- Examples:
-  * Query about "hedge fund AI analysis" → List software companies like Kensho, AlphaSense (NOT hedge funds)
-  * Query about "restaurant ordering systems" → List POS/ordering platforms (NOT restaurant chains)
-  * Query about "healthcare diagnostics" → List medical tech companies (NOT hospitals)
-- The KEY PLAYERS should be companies that BUILD/PROVIDE the solution
-- Do NOT list the companies that are CUSTOMERS/USERS of the solution
+IMPORTANT RULES:
+- Focus ONLY on the market space being analyzed
 - Do NOT mention "portfolio companies" or make investment recommendations
 - Do NOT suggest "following up with companies" - this is pure market research
 - Be specific about company names, technologies, and trends

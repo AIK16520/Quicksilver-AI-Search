@@ -1,0 +1,78 @@
+name: Newsletter Scraper
+
+on:
+  schedule:
+    # Daily at 9 AM UTC (runs both Product Hunt + Beehive newsletters)
+    - cron: '0 9 * * *'
+    # Monthly on 1st at 2 AM UTC (runs both with monthly Product Hunt)
+    - cron: '0 2 1 * *'
+  workflow_dispatch: # Allow manual runs
+
+jobs:
+  daily-scrape:
+    if: github.event.schedule == '0 9 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r core/requirements.txt
+      
+      - name: Run daily scraper (Product Hunt + Beehive)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PRODUCTHUNT_API_TOKEN: ${{ secrets.PRODUCTHUNT_API_TOKEN }}
+        run: |
+          echo "Running daily scraper..."
+          echo "- Product Hunt: Top products from last 2 days"
+          echo "- Beehive: All active newsletters"
+          python pipeline/run.py
+      
+      - name: Upload logs
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: daily-logs-${{ github.run_number }}
+          path: pipeline/logs/
+
+  monthly-scrape:
+    if: github.event.schedule == '0 2 1 * *'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r core/requirements.txt
+      
+      - name: Run monthly scraper (Product Hunt + Beehive)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PRODUCTHUNT_API_TOKEN: ${{ secrets.PRODUCTHUNT_API_TOKEN }}
+        run: |
+          echo "Running monthly scraper..."
+          echo "- Product Hunt: Top products from last 30 days"
+          echo "- Beehive: All active newsletters"
+          python pipeline/run.py --monthly
+      
+      - name: Upload logs
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: monthly-logs-${{ github.run_number }}
+          path: pipeline/logs/

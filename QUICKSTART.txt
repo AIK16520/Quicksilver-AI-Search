@@ -1,0 +1,77 @@
+QUICKSILVER - QUICK START GUIDE
+================================
+
+SETUP (ONE TIME)
+----------------
+1. Run in Supabase SQL Editor:
+   - alter_add_keyword_embedding.sql
+   - setup_producthunt_newsletter.sql
+
+2. Set environment variables:
+   - OPENAI_API_KEY
+   - PRODUCTHUNT_API_TOKEN (optional, has default)
+   - SUPABASE_URL
+   - SUPABASE_KEY
+
+
+DAILY USAGE (RECOMMENDED)
+--------------------------
+# Fetch recent top products from Product Hunt + Beehive newsletters
+python pipeline/run.py
+
+This will:
+✓ Skip OpenAI if product already has embeddings (saves API costs)
+✓ Fetch top 50 products from last 2 days
+✓ Process all Beehive newsletters
+
+
+MONTHLY USAGE
+-------------
+# Fetch monthly top products (last 30 days) + Beehive newsletters
+python pipeline/run.py --monthly
+
+This will:
+✓ Skip OpenAI if product already has embeddings
+✓ Fetch top 100 products from last 30 days
+✓ Process all Beehive newsletters
+
+
+OTHER OPTIONS
+-------------
+# Test mode (don't write to database)
+python pipeline/run.py --test
+
+# Backfill all historical data
+python pipeline/run.py --backfill
+
+# Backfill missing keyword embeddings only
+python pipeline/run_producthunt_daily.py --backfill-embeddings
+
+# Process specific newsletter by ID
+python pipeline/run.py --newsletter-id <uuid>
+
+
+CRON SCHEDULE
+-------------
+# Daily at 9 AM (fetch top products from last 2 days)
+0 9 * * * cd /path/to/Quicksilver && python pipeline/run.py
+
+# Monthly on 1st at 2 AM (fetch monthly top products)
+0 2 1 * * cd /path/to/Quicksilver && python pipeline/run.py --monthly
+
+
+WHAT GETS STORED
+----------------
+For Product Hunt products:
+✓ embedding - Full description semantic search
+✓ keyword_embedding - Focused search (name + keywords + overview)
+✓ keywords[] - Exact keyword matching
+✓ All product metadata (name, description, links, etc.)
+
+AI processing is automatically skipped if embeddings already exist!
+
+
+LOGS
+----
+Logs are stored in: pipeline/logs/run_YYYYMMDD.log
+

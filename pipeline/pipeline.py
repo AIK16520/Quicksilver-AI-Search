@@ -81,12 +81,37 @@ class Pipeline:
             
             # Step 3: Create parser and fetch articles
             logger.info("\nFetching articles...")
+            
+            # Build config based on source type
+            config = newsletter.get('_runtime_config', {})  # Get runtime config passed from run.py
+            if newsletter['source_type'].lower() == 'producthunt' and not config:
+                import os
+                # Default config if not provided
+                config = {
+                    'limit': 50,
+                    'days_back': 2,  # Default: last 2 days
+                    'api_token': os.getenv('PRODUCTHUNT_API_TOKEN', 'fF5l782F-LB-w0KqzIfovrHZGkqD5K8F8I3WgpsP_Rw')
+                }
+            
             parser = ParserFactory.create(
                 source_type=newsletter['source_type'],
                 newsletter_id=newsletter_id,
                 url=newsletter['url'],
-                config=newsletter.get('scraping_config', {})
+                config=config
             )
+            
+            # Special handling for Product Hunt
+            if newsletter['source_type'].lower() == 'producthunt':
+                logger.info("Product Hunt source detected - using direct storage")
+                # Product Hunt stores directly, doesn't return articles
+                stored_count = parser.fetch_and_store(max_products=None)
+                # Update newsletter timestamp
+                self.storage.update_newsletter_scraped(newsletter_id)
+                stats['articles_fetched'] = stored_count
+                stats['articles_stored'] = stored_count
+                stats['end_time'] = datetime.now()
+                logger.info(f"✓ Product Hunt processing complete - {stored_count} products stored")
+                return stats
             
             articles = parser.fetch_articles(since=since)
             stats['articles_fetched'] = len(articles)
@@ -183,27 +208,28 @@ class Pipeline:
             stats['errors'] += 1
             return stats
     
-    def process_all_active(self, backfill: bool = False) -> List[Dict[str, Any]]:
+    def process_all_active(self, backfill: bool = False, runtime_config: Optional[Dict] = None) -> List[Dict[str, Any]]:
         """
         Process all active newsletters.
         
         Args:
             backfill: If True, fetch all articles. If False, only new ones.
+            runtime_config: Optional runtime configuration to pass to parsers
         
         Returns:
             List of stats dictionaries (one per newsletter)
         """
         logger.info("\n" + "="*60)
-        logger.info("Processing ALL active newsletters")
+        logger.info("Processing ALL newsletters")
         logger.info("="*60 + "\n")
         
         newsletters = self.storage.get_active_newsletters()
         
         if not newsletters:
-            logger.warning("No active newsletters found")
+            logger.warning("No newsletters found")
             return []
         
-        logger.info(f"Found {len(newsletters)} active newsletters\n")
+        logger.info(f"Found {len(newsletters)} newsletter(s)\n")
         
         all_stats = []
         
@@ -211,6 +237,10 @@ class Pipeline:
             logger.info(f"\n{'*'*60}")
             logger.info(f"Newsletter {idx}/{len(newsletters)}: {newsletter['name']}")
             logger.info(f"{'*'*60}")
+            
+            # Inject runtime config if provided
+            if runtime_config:
+                newsletter['_runtime_config'] = runtime_config
             
             stats = self.process_newsletter(
                 newsletter_id=newsletter['id'],
