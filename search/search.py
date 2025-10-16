@@ -13,6 +13,9 @@ from openai import OpenAI
 from core.config import supabase_client, OPENAI_API_KEY, BRAVE_API_KEY, EMBEDDING_MODEL, GPT_MODEL
 from .competitor_discovery import CompetitorDiscoveryService, DiscoveredCompetitor
 from .competitor_config import CompetitorDiscoveryConfig, MODERATE_DISCOVERY
+from .market_intelligence import MarketIntelligenceService, MarketIntelligenceReport
+from .report_formatter import ReportFormatter
+from .deep_dive import DeepDiveService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("search")
@@ -35,6 +38,15 @@ class SearchService:
 
         # Initialize competitor discovery service with default configuration
         self.competitor_discovery = CompetitorDiscoveryService(MODERATE_DISCOVERY)
+        
+        # Initialize market intelligence service
+        self.market_intelligence = MarketIntelligenceService()
+        
+        # Initialize deep dive service
+        self.deep_dive_service = DeepDiveService()
+        
+        # Initialize report formatter
+        self.report_formatter = ReportFormatter()
 
         # Cache portfolio companies for faster lookups
         self._portfolio_cache = None
@@ -1019,6 +1031,113 @@ Be concrete and actionable for VC portfolio management. Avoid generic statements
         """Helper method to find companies by industry"""
         companies = self._get_portfolio_companies()
         return [c for c in companies if c.get('industry', '').lower() == industry.lower()]
+
+    def analyze_market_intelligence(
+        self,
+        query: str,
+        max_results_per_dimension: int = 8,
+        include_ai_insights: bool = True,
+        format_type: str = "api"
+    ) -> Dict:
+        """
+        Perform comprehensive multi-dimensional market intelligence analysis
+        
+        This is the new enhanced search that breaks down complex queries and
+        analyzes the space across multiple dimensions: companies, technology,
+        business models, innovations, and market trends.
+        
+        Args:
+            query: Natural language description of company/space to analyze
+            max_results_per_dimension: Max articles to collect per dimension
+            include_ai_insights: Whether to generate AI-powered insights
+            format_type: Output format ("api", "display", or "summary")
+            
+        Returns:
+            Formatted market intelligence report
+            
+        Example:
+            query = "I have a company that does hedge fund and trade analysis using AI. 
+                     It has agents that scrape market data, pricing data, and financial news 
+                     and gives funds automated updates if anything changes. Give me updates in the space."
+        """
+        logger.info(f"Starting market intelligence analysis: {query[:100]}...")
+        
+        # Perform the analysis
+        report = self.market_intelligence.analyze_market(
+            query=query,
+            max_results_per_dimension=max_results_per_dimension,
+            include_ai_insights=include_ai_insights
+        )
+        
+        # Format based on requested type
+        if format_type == "display":
+            return {
+                'formatted_output': self.report_formatter.format_for_display(report),
+                'report': report
+            }
+        elif format_type == "summary":
+            return self.report_formatter.format_summary(report)
+        else:  # api (default)
+            return self.report_formatter.format_for_api(report, extract_entities=True)
+    
+    def deep_dive_entity(
+        self,
+        entity: str,
+        entity_type: str = "company",
+        context: str = "",
+        max_articles: int = 15
+    ) -> Dict:
+        """
+        Perform deep dive on a specific entity (company, partnership, technology)
+        
+        This is triggered when user clicks "Deep Dive" button on an entity
+        
+        Args:
+            entity: The entity to research (e.g., "Refinitiv", "Goldman Sachs AI partnerships")
+            entity_type: Type ("company", "partnership", "technology", "vague_mention")
+            context: Original search context for relevance
+            max_articles: Maximum articles to analyze
+            
+        Returns:
+            Formatted deep dive report
+            
+        Example:
+            # User saw "Refinitiv" in market intelligence report
+            service.deep_dive_entity("Refinitiv", "company", "hedge fund AI")
+            
+            # User saw "Goldman Sachs partnered with AI startups"
+            service.deep_dive_entity(
+                "Goldman Sachs AI startup partnerships",
+                "partnership",
+                "hedge fund AI"
+            )
+        """
+        logger.info(f"Deep dive on entity: {entity}")
+        
+        report = self.deep_dive_service.deep_dive(
+            entity=entity,
+            entity_type=entity_type,
+            context=context,
+            max_articles=max_articles
+        )
+        
+        # Format for API
+        return {
+            'entity': report.entity,
+            'entity_type': report.entity_type,
+            'context': report.context,
+            'generated_at': report.generated_at,
+            'overview': report.overview,
+            'key_facts': report.key_facts,
+            'recent_developments': report.recent_developments,
+            'competitors': report.competitors,
+            'technologies_used': report.technologies_used,
+            'business_model': report.business_model,
+            'partners': report.partners,
+            'companies_using': report.companies_using,
+            'related_entities': report.related_entities,
+            'suggested_next_searches': report.suggested_next_searches
+        }
 
     def display_results(self, results: Dict, show_full_insights: bool = True):
         """

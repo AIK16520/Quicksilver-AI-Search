@@ -56,6 +56,40 @@ export const searchAPI = {
     return response.data;
   },
 
+  // Multi-dimensional market intelligence analysis
+  analyzeMarketIntelligence: async (query, options = {}) => {
+    const {
+      maxResultsPerDimension = 8,
+      includeAiInsights = true,
+      formatType = "api"
+    } = options;
+
+    const response = await axios.post(`${API_BASE_URL}/market-intelligence`, {
+      query,
+      max_results_per_dimension: maxResultsPerDimension,
+      include_ai_insights: includeAiInsights,
+      format_type: formatType
+    });
+    return response.data;
+  },
+
+  // Deep dive on specific entity (company, partnership, technology)
+  deepDive: async (entity, options = {}) => {
+    const {
+      entityType = "company",
+      context = "",
+      maxArticles = 15
+    } = options;
+
+    const response = await axios.post(`${API_BASE_URL}/deep-dive`, {
+      entity,
+      entity_type: entityType,
+      context,
+      max_articles: maxArticles
+    });
+    return response.data;
+  },
+
   // Health check
   healthCheck: async () => {
     const response = await axios.get(`${API_BASE_URL}/health`);

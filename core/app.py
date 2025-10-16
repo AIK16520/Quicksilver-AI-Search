@@ -16,6 +16,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.config import supabase_client, OPENAI_API_KEY, BRAVE_API_KEY, EMBEDDING_MODEL, GPT_MODEL
 from search.search import SearchService
 from search.competitor_config import CompetitorDiscoveryConfig
+from search.market_intelligence import MarketIntelligenceReport
 from fastapi.responses import FileResponse, Response
 
 
@@ -92,6 +93,25 @@ class CompetitorAnalysisResponse(BaseModel):
     total_mapped: int
     total_discovered: int
     total_competitors: int
+
+class MarketIntelligenceRequest(BaseModel):
+    query: str
+    max_results_per_dimension: int = 8
+    include_ai_insights: bool = True
+    format_type: str = "api"  # "api", "display", or "summary"
+
+class MarketIntelligenceResponse(BaseModel):
+    # Using flexible Dict to accommodate different format types
+    data: Dict[str, Any]
+
+class DeepDiveRequest(BaseModel):
+    entity: str
+    entity_type: str = "company"  # "company", "partnership", "technology"
+    context: str = ""
+    max_articles: int = 15
+
+class DeepDiveResponse(BaseModel):
+    data: Dict[str, Any]
 @app.get("/favicon.ico", include_in_schema=False)
 @app.get("/favicon.png", include_in_schema=False)
 def favicon():
@@ -109,9 +129,11 @@ async def root():
         "description": "VC-focused search service with portfolio intelligence",
         "endpoints": {
             "search": "/search (POST) - Perform intelligent search",
+            "market-intelligence": "/market-intelligence (POST) - Multi-dimensional market analysis",
+            "deep-dive": "/deep-dive (POST) - Deep dive on specific company/entity",
+            "analyze-competitors": "/analyze-competitors (POST) - Enhanced competitor analysis with discovery",
             "query-type": "/query-type (POST) - Detect query intent",
             "context": "/context (POST) - Build search context",
-            "analyze-competitors": "/analyze-competitors (POST) - Enhanced competitor analysis with discovery",
             "health": "/health (GET) - Health check"
         }
     }
@@ -230,6 +252,63 @@ async def analyze_competitors(request: CompetitorAnalysisRequest):
             total_competitors=results['total_competitors']
         )
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/market-intelligence", response_model=MarketIntelligenceResponse)
+async def perform_market_intelligence(request: MarketIntelligenceRequest):
+    """
+    Perform comprehensive multi-dimensional market intelligence analysis
+    
+    This endpoint analyzes a market space across multiple dimensions:
+    - Company landscape (key players, startups, incumbents)
+    - Technology landscape (tech stack, tools, platforms)
+    - Business models (pricing, monetization strategies)
+    - Innovations (recent innovations, differentiators)
+    - Market trends (growth, dynamics, future outlook)
+    - Competitive intelligence (competitor discovery & mapping)
+    
+    Example query:
+    "I have a company that does hedge fund and trade analysis using AI. 
+     It has agents that scrape market data, pricing data, and financial news 
+     and gives funds automated updates if anything changes. Give me updates in the space."
+    """
+    try:
+        result = search_service.analyze_market_intelligence(
+            query=request.query,
+            max_results_per_dimension=request.max_results_per_dimension,
+            include_ai_insights=request.include_ai_insights,
+            format_type=request.format_type
+        )
+        
+        return MarketIntelligenceResponse(data=result)
+    except Exception as e:
+        logger.error(f"Market intelligence error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/deep-dive", response_model=DeepDiveResponse)
+async def perform_deep_dive(request: DeepDiveRequest):
+    """
+    Perform deep dive on a specific entity (company, partnership, or technology)
+    
+    This endpoint is triggered when users click "Deep Dive" buttons in market intelligence reports.
+    It provides focused, detailed analysis on a single entity.
+    
+    Example use cases:
+    - Deep dive on "Refinitiv" after seeing it mentioned in competitive analysis
+    - Find specific AI startups that "Goldman Sachs partnered with"
+    - Explore a technology like "AI agents" in depth
+    """
+    try:
+        result = search_service.deep_dive_entity(
+            entity=request.entity,
+            entity_type=request.entity_type,
+            context=request.context,
+            max_articles=request.max_articles
+        )
+        
+        return DeepDiveResponse(data=result)
+    except Exception as e:
+        logger.error(f"Deep dive error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
