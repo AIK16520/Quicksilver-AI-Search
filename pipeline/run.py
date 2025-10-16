@@ -91,10 +91,15 @@ def main():
         
         # Build runtime config for Product Hunt
         import os
+        api_token = os.getenv('PRODUCTHUNT_API_TOKEN')
+        if not api_token:
+            logger.error("PRODUCTHUNT_API_TOKEN environment variable not set")
+            sys.exit(1)
+        
         runtime_config = {
             'limit': 100 if args.monthly else 50,
             'days_back': 30 if args.monthly else 2,  # 2 days for default mode, 30 days for monthly
-            'api_token': os.getenv('PRODUCTHUNT_API_TOKEN', 'fF5l782F-LB-w0KqzIfovrHZGkqD5K8F8I3WgpsP_Rw')
+            'api_token': api_token
         }
 
         # Process newsletters

@@ -197,10 +197,15 @@ def main():
     
     try:
         # Create scraper configuration
+        api_token = os.getenv('PRODUCTHUNT_API_TOKEN')
+        if not api_token:
+            logger.error("PRODUCTHUNT_API_TOKEN environment variable not set")
+            return 1
+        
         config = {
             'limit': args.limit,
             'days_back': args.days,
-            'api_token': 'fF5l782F-LB-w0KqzIfovrHZGkqD5K8F8I3WgpsP_Rw'
+            'api_token': api_token
         }
         
         # Initialize scraper

@@ -48,7 +48,9 @@ class ProductHuntScraper:
         self.newsletter_id = newsletter_id
         self.url = url
         self.config = config
-        self.api_token = config.get('api_token', 'fF5l782F-LB-w0KqzIfovrHZGkqD5K8F8I3WgpsP_Rw')
+        self.api_token = config.get('api_token')
+        if not self.api_token:
+            raise ValueError("PRODUCTHUNT_API_TOKEN is required but not provided")
         self.limit = config.get('limit', 50)
         self.days_back = config.get('days_back', 30)
         self.api_endpoint = "https://api.producthunt.com/v2/api/graphql"

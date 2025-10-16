@@ -86,11 +86,16 @@ class Pipeline:
             config = newsletter.get('_runtime_config', {})  # Get runtime config passed from run.py
             if newsletter['source_type'].lower() == 'producthunt' and not config:
                 import os
+                api_token = os.getenv('PRODUCTHUNT_API_TOKEN')
+                if not api_token:
+                    logger.error("PRODUCTHUNT_API_TOKEN environment variable not set")
+                    return stats
+                
                 # Default config if not provided
                 config = {
                     'limit': 50,
                     'days_back': 2,  # Default: last 2 days
-                    'api_token': os.getenv('PRODUCTHUNT_API_TOKEN', 'fF5l782F-LB-w0KqzIfovrHZGkqD5K8F8I3WgpsP_Rw')
+                    'api_token': api_token
                 }
             
             parser = ParserFactory.create(
