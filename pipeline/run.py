@@ -97,7 +97,7 @@ def main():
             sys.exit(1)
         
         runtime_config = {
-            'limit': 100 if args.monthly else 50,
+            'limit': 100 if args.monthly else 25,
             'days_back': 30 if args.monthly else 2,  # 2 days for default mode, 30 days for monthly
             'api_token': api_token
         }

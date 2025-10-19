@@ -51,7 +51,7 @@ class ProductHuntScraper:
         self.api_token = config.get('api_token')
         if not self.api_token:
             raise ValueError("PRODUCTHUNT_API_TOKEN is required but not provided")
-        self.limit = config.get('limit', 50)
+        self.limit = config.get('limit', 25)
         self.days_back = config.get('days_back', 30)
         self.api_endpoint = "https://api.producthunt.com/v2/api/graphql"
         self.setup_logging()

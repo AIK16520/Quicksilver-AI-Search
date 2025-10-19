@@ -93,7 +93,7 @@ class Pipeline:
                 
                 # Default config if not provided
                 config = {
-                    'limit': 50,
+                    'limit': 25,
                     'days_back': 2,  # Default: last 2 days
                     'api_token': api_token
                 }
