@@ -91,17 +91,25 @@ class BeehiveScraper:
                         if not actual_driver_path:
                             for root, dirs, files in os.walk(driver_path):
                                 for file in files:
-                                    # Skip known non-executable files
+                                    # Skip known non-executable files more strictly
                                     if any(file.upper().startswith(prefix) for prefix in ['THIRD_PARTY', 'LICENSE', 'README', 'NOTICE']):
                                         continue
+                                    
+                                    # Skip files that are clearly not executables
+                                    if file.endswith(('.txt', '.md', '.json', '.xml', '.zip')):
+                                        continue
 
-                                    # Look for actual chromedriver executable (not notices or licenses)
-                                    if (file.lower() in ['chromedriver', 'chromedriver.exe'] or
-                                        (file.lower().startswith('chromedriver') and file.lower().endswith(('.exe', '-linux64', '-win32.exe', '-mac64')))):
+                                    # Look for actual chromedriver executable
+                                    if (file.lower() == 'chromedriver' or 
+                                        file.lower() == 'chromedriver.exe' or
+                                        (file.lower().startswith('chromedriver') and 
+                                         file.lower().endswith(('.exe', '-linux64', '-win32.exe', '-mac64')))):
                                         file_path = os.path.join(root, file)
                                         if os.path.isfile(file_path):
-                                            actual_driver_path = file_path
-                                            break
+                                            # Additional check: make sure it's not a text file
+                                            if not file_path.lower().endswith(('.txt', '.md', '.json', '.xml')):
+                                                actual_driver_path = file_path
+                                                break
                                 if actual_driver_path:
                                     break
 
@@ -112,15 +120,36 @@ class BeehiveScraper:
                                     # Skip known non-executable files
                                     if any(file.upper().startswith(prefix) for prefix in ['THIRD_PARTY', 'LICENSE', 'README', 'NOTICE']):
                                         continue
+                                    
+                                    # Skip files that are clearly not executables
+                                    if file.endswith(('.txt', '.md', '.json', '.xml', '.zip')):
+                                        continue
 
                                     file_path = os.path.join(root, file)
                                     if (os.path.isfile(file_path) and
                                         'chromedriver' in file.lower() and
-                                        (os.access(file_path, os.X_OK) or file.endswith('.exe'))):
+                                        file.lower().endswith('.exe') and
+                                        not file_path.lower().endswith(('.txt', '.md', '.json', '.xml'))):
                                         actual_driver_path = file_path
                                         break
                                 if actual_driver_path:
                                     break
+
+                    # Additional validation: make sure we didn't pick up a text file
+                    if actual_driver_path and 'THIRD_PARTY' in actual_driver_path.upper():
+                        print(f"Warning: Found THIRD_PARTY file, searching for actual executable...")
+                        actual_driver_path = None
+                        # Search again more carefully
+                        for root, dirs, files in os.walk(driver_path):
+                            for file in files:
+                                if (file.lower() == 'chromedriver.exe' or 
+                                    (file.lower().startswith('chromedriver') and file.lower().endswith('.exe') and 'third_party' not in file.lower())):
+                                    file_path = os.path.join(root, file)
+                                    if os.path.isfile(file_path):
+                                        actual_driver_path = file_path
+                                        break
+                            if actual_driver_path:
+                                break
 
                     if actual_driver_path and os.path.exists(actual_driver_path):
                         print(f"Found ChromeDriver executable at: {actual_driver_path}")

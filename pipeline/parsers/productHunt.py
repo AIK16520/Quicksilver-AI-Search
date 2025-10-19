@@ -42,7 +42,7 @@ class ProductHuntScraper:
             url: Not used for API, kept for consistency
             config: Configuration dict with:
                 - api_token: Product Hunt API token (required)
-                - limit: Number of products to fetch (default: 50)
+                - limit: Number of products to fetch (default: 25)
                 - days_back: How many days back to fetch (default: 30)
         """
         self.newsletter_id = newsletter_id
