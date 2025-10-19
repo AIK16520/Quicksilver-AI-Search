@@ -130,27 +130,91 @@ class ProductHuntScraper:
             "Accept": "application/json"
         }
         
-        try:
-            response = requests.post(
-                self.api_endpoint,
-                json={"query": query, "variables": variables},
-                headers=headers,
-                timeout=30
-            )
-            response.raise_for_status()
-            data = response.json()
-            
-            # Check for GraphQL errors
-            if 'errors' in data:
-                self.logger.error(f"GraphQL errors: {data['errors']}")
+        # Retry logic with exponential backoff for rate limiting
+        max_retries = 3
+        base_delay = 2  # seconds
+
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(
+                    self.api_endpoint,
+                    json={"query": query, "variables": variables},
+                    headers=headers,
+                    timeout=30
+                )
+
+                # Log rate limit info from headers (available in all responses)
+                rate_limit_limit = response.headers.get('X-Rate-Limit-Limit', 'unknown')
+                rate_limit_remaining = response.headers.get('X-Rate-Limit-Remaining', 'unknown')
+                rate_limit_reset = response.headers.get('X-Rate-Limit-Reset', 'unknown')
+
+                self.logger.info(f"Rate limit status - Limit: {rate_limit_limit}, Remaining: {rate_limit_remaining}, Reset in: {rate_limit_reset}s")
+
+                # Warn if running low on quota
+                if rate_limit_remaining != 'unknown':
+                    try:
+                        remaining = int(rate_limit_remaining)
+                        limit = int(rate_limit_limit) if rate_limit_limit != 'unknown' else 6250
+
+                        # Warn if below 20% remaining
+                        if remaining < (limit * 0.2):
+                            self.logger.warning(f"⚠️ Low rate limit quota: {remaining}/{limit} remaining")
+
+                        # If very low, add delay to avoid hitting limit
+                        if remaining < 100:
+                            self.logger.warning(f"Very low quota ({remaining}), adding 2s delay...")
+                            time.sleep(2)
+                    except ValueError:
+                        pass
+
+                # Handle rate limiting (429)
+                if response.status_code == 429:
+                    # Try to get the reset time from headers
+                    reset_seconds = int(rate_limit_reset) if rate_limit_reset != 'unknown' else base_delay * (2 ** attempt)
+
+                    if attempt < max_retries - 1:
+                        # Use the reset time from API or exponential backoff
+                        delay = min(reset_seconds, 60)  # Cap at 60 seconds
+                        self.logger.warning(f"Rate limited (429). Waiting {delay} seconds until reset... (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(delay)
+                        continue
+                    else:
+                        self.logger.error(f"Rate limited - max retries exceeded. Reset in {reset_seconds}s")
+                        return {}
+
+                response.raise_for_status()
+                data = response.json()
+
+                # Check for GraphQL errors
+                if 'errors' in data:
+                    self.logger.error(f"GraphQL errors: {data['errors']}")
+                    return {}
+
+                return data
+
+            except requests.exceptions.HTTPError as e:
+                # Extract rate limit info even from error responses
+                if hasattr(e, 'response') and e.response is not None:
+                    rate_limit_reset = e.response.headers.get('X-Rate-Limit-Reset', 'unknown')
+
+                    if e.response.status_code == 429 and attempt < max_retries - 1:
+                        reset_seconds = int(rate_limit_reset) if rate_limit_reset != 'unknown' else base_delay * (2 ** attempt)
+                        delay = min(reset_seconds, 60)  # Cap at 60 seconds
+                        self.logger.warning(f"Rate limited (HTTPError). Waiting {delay} seconds until reset...")
+                        time.sleep(delay)
+                        continue
+
+                self.logger.error(f"API request failed: {e}")
+                import traceback
+                traceback.print_exc()
                 return {}
-            
-            return data
-        except Exception as e:
-            self.logger.error(f"API request failed: {e}")
-            import traceback
-            traceback.print_exc()
-            return {}
+            except Exception as e:
+                self.logger.error(f"API request failed: {e}")
+                import traceback
+                traceback.print_exc()
+                return {}
+
+        return {}
     
     def parse_post(self, post_data: Dict, generate_embeddings: bool = True) -> Dict[str, Any]:
         """

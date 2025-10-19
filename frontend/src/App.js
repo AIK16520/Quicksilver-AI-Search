@@ -467,10 +467,12 @@ function App() {
                     }
 
                     const technologiesWithDetails = Object.keys(technologyDetails);
+                    // Limit to top 12 technologies
+                    const limitedTechnologies = technologiesWithDetails.slice(0, 12);
 
-                    return technologiesWithDetails.length > 0 ? (
+                    return limitedTechnologies.length > 0 ? (
                       <Grid container spacing={2}>
-                        {technologiesWithDetails.map((tech, index) => (
+                        {limitedTechnologies.map((tech, index) => (
                           <Grid item xs={12} sm={6} md={4} key={index}>
                             <Paper sx={{ p: 2, height: '100%' }}>
                               <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
@@ -479,11 +481,6 @@ function App() {
                               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                                 {technologyDetails[tech][0] || `Technology used in financial data analysis and automation`}
                               </Typography>
-                              {technologyDetails[tech].length > 1 && (
-                                <Typography variant="body2" color="primary" sx={{ fontSize: '0.875rem' }}>
-                                  +{technologyDetails[tech].length - 1} more specific applications
-                                </Typography>
-                              )}
                             </Paper>
                           </Grid>
                         ))}
@@ -547,31 +544,34 @@ function App() {
                       });
                     }
 
+                    // Limit to top 12 business models
+                    const limitedBusinessModels = discoveredBusinessModels.slice(0, 12);
+
                     return (
                       <Box>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                           Discovered business models and innovative approaches in the market:
                         </Typography>
-                        
-                        {discoveredBusinessModels.length > 0 ? (
+
+                        {limitedBusinessModels.length > 0 ? (
                           <Grid container spacing={2}>
-                            {discoveredBusinessModels.map((model, index) => (
-                              <Grid item xs={12} md={6} key={index}>
-                                <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                    {model.split(':')[0] || 'Innovative Business Model'}
-                                  </Typography>
-                                  <Typography variant="body2" color="text.secondary">
-                                    {model.split(':')[1] || model}
-                                  </Typography>
-                                  {model.includes('Innovation:') && (
-                                    <Typography variant="body2" color="primary" sx={{ mt: 1, fontSize: '0.875rem' }}>
-                                      🚀 {model.split('Innovation:')[1]}
+                            {limitedBusinessModels.map((model, index) => {
+                              // Remove innovation labels from the model text
+                              let cleanModel = model.replace(/\s*\(Innovation:.*?\)\s*/g, '');
+
+                              return (
+                                <Grid item xs={12} md={6} key={index}>
+                                  <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+                                    <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                                      {cleanModel.split(':')[0] || 'Business Model'}
                                     </Typography>
-                                  )}
-                                </Paper>
-                              </Grid>
-                            ))}
+                                    <Typography variant="body2" color="text.secondary">
+                                      {cleanModel.split(':')[1] || cleanModel}
+                                    </Typography>
+                                  </Paper>
+                                </Grid>
+                              );
+                            })}
                           </Grid>
                         ) : (
                           <Box>

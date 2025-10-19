@@ -90,18 +90,28 @@ class BeehiveScraper:
                         if not actual_driver_path:
                             for root, dirs, files in os.walk(driver_path):
                                 for file in files:
-                                    if 'chromedriver' in file.lower():
-                                        actual_driver_path = os.path.join(root, file)
-                                        break
+                                    # Skip non-executable files like THIRD_PARTY_NOTICES, LICENSE, etc.
+                                    if file.upper().startswith(('THIRD_PARTY', 'LICENSE', 'README', 'NOTICE')):
+                                        continue
+                                    # Look for the actual chromedriver executable
+                                    if 'chromedriver' in file.lower() and not file.endswith('.txt'):
+                                        file_path = os.path.join(root, file)
+                                        # Verify it's executable or can be made executable
+                                        if os.path.isfile(file_path):
+                                            actual_driver_path = file_path
+                                            break
                                 if actual_driver_path:
                                     break
 
                         if not actual_driver_path:
-                            # Try to find any executable file in the directory
+                            # Try to find any executable file in the directory (excluding known non-executable files)
                             for root, dirs, files in os.walk(driver_path):
                                 for file in files:
+                                    # Skip known non-executable files
+                                    if file.upper().startswith(('THIRD_PARTY', 'LICENSE', 'README', 'NOTICE')):
+                                        continue
                                     file_path = os.path.join(root, file)
-                                    if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
+                                    if os.path.isfile(file_path) and (os.access(file_path, os.X_OK) or file.endswith('.exe')):
                                         actual_driver_path = file_path
                                         break
                                 if actual_driver_path:

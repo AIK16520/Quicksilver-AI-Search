@@ -698,21 +698,18 @@ Focus on extracting:
             # Convert to the expected format
             business_models = []
             company_business_models = {}
-            
+
             for model in result.get('business_models', []):
                 model_name = model.get('name', '')
                 model_description = model.get('description', '')
                 companies = model.get('companies', [])
-                innovation_level = model.get('innovation_level', '')
-                
+
                 if model_name and model_description:
-                    # Create descriptive business model entry
+                    # Create descriptive business model entry without innovation labels
                     full_description = f"{model_name}: {model_description}"
-                    if innovation_level and innovation_level != 'traditional':
-                        full_description += f" (Innovation: {innovation_level})"
-                    
+
                     business_models.append(full_description)
-                    
+
                     # Associate companies with this business model
                     for company in companies:
                         if company not in company_business_models:
