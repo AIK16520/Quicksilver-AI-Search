@@ -1,4 +1,5 @@
 import sys
+import os
 from pathlib import Path
 
 # Add parent directory to path for imports
@@ -34,34 +35,74 @@ class BeehiveScraper:
     
     def create_webdriver_instance(self):
         chrome_options = Options()
-        
-        
+
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--disable-web-security")
+        chrome_options.add_argument("--disable-features=VizDisplayCompositor")
 
         try:
-            # Try using the manually downloaded ChromeDriver first
-            chromedriver_path = r"C:\Users\Ali Imran\.wdm\drivers\chromedriver\win64\141.0.7390.78\chromedriver-win32\chromedriver.exe"
-            print(f"Trying to use existing ChromeDriver at: {chromedriver_path}")
+            # Use ChromeDriverManager to handle driver installation and path resolution
+            print("Setting up ChromeDriver using ChromeDriverManager...")
 
-            # Check if the file exists
-            import os
-            if os.path.exists(chromedriver_path):
-                print("Found existing ChromeDriver, using it directly...")
-                service = Service(chromedriver_path)
-            else:
-                print("ChromeDriver not found at expected path, downloading...")
-                service = Service(ChromeDriverManager().install())
+            # Configure ChromeDriverManager to be more robust
+            from selenium.webdriver.chrome.service import Service as ChromeService
+
+            # Try to use a specific version and handle path issues
+            try:
+                # First try to get the latest chromedriver
+                driver_path = ChromeDriverManager().install()
+                print(f"ChromeDriver installed at: {driver_path}")
+
+                # Verify the driver path points to the actual executable
+                if driver_path and os.path.exists(driver_path):
+                    # Check if it's actually an executable file (not a text file like THIRD_PARTY_NOTICES)
+                    if os.path.isfile(driver_path) and os.access(driver_path, os.X_OK):
+                        service = ChromeService(driver_path)
+                        print(f"Using verified ChromeDriver at: {driver_path}")
+                    else:
+                        print(f"Driver file is not executable, re-downloading...")
+                        raise Exception("Driver not executable")
+                else:
+                    raise Exception("Driver path not found")
+
+            except Exception as e:
+                print(f"Error with automatic driver management: {e}")
+                print("Falling back to manual driver management...")
+
+                # Fallback: try to use system chromedriver if available
+                try:
+                    service = ChromeService()
+                    print("Using system ChromeDriver...")
+                except Exception as e2:
+                    print(f"System ChromeDriver also failed: {e2}")
+                    raise Exception(f"All ChromeDriver methods failed: {e}")
 
         except Exception as e:
             print(f"Error: ChromeDriver setup failed: {e}")
+            print("\nTroubleshooting suggestions:")
+            print("1. Make sure Google Chrome is installed on your system")
+            print("2. Try running: pip install webdriver-manager --upgrade")
+            print("3. Check if antivirus software is blocking chromedriver")
+            print("4. Ensure you have sufficient disk space for driver download")
+            print("5. Try clearing webdriver cache: pip cache remove webdriver-manager")
+            print(f"\nError details: {str(e)}")
             raise e
 
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-        
-        return driver
+        try:
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+            print("ChromeDriver initialized successfully")
+            return driver
+        except Exception as e:
+            print(f"Failed to create Chrome WebDriver instance: {e}")
+            print("\nAdditional troubleshooting:")
+            print("- Chrome version might be incompatible with downloaded driver")
+            print("- Try updating Chrome to the latest version")
+            print("- Or try: pip install --upgrade selenium webdriver-manager")
+            print(f"\nFull error: {str(e)}")
+            raise e
     
     def scrape_single_article(self, url):
         if not self.driver:

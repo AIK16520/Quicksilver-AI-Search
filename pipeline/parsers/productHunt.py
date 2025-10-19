@@ -188,6 +188,37 @@ class ProductHuntScraper:
         ]
         ai_description = " | ".join([part for part in ai_description_parts if part])
         
+        # Extract business model and technology information
+        business_model = self.extract_business_model({
+            'product_name': post_data.get('name', 'Untitled'),
+            'overview': overview,
+            'description': description
+        })
+
+        technology = self.extract_technology({
+            'product_name': post_data.get('name', 'Untitled'),
+            'overview': overview,
+            'description': description
+        })
+
+        # Generate competitive moat analysis
+        moat = self.generate_moat({
+            'product_name': post_data.get('name', 'Untitled'),
+            'overview': overview,
+            'description': description,
+            'Business': business_model,
+            'Tech': technology
+        })
+
+        # Generate moat embedding if moat is available
+        moat_embedding = None
+        if moat and OPENAI_AVAILABLE and openai_client:
+            try:
+                moat_embedding = self.generate_embedding(moat)
+                self.logger.info(f"Generated moat embedding for {post_data.get('name', 'Untitled')}")
+            except Exception as e:
+                self.logger.warning(f"Failed to generate moat embedding: {e}")
+
         product = {
             'product_name': post_data.get('name', 'Untitled'),
             'producthunt_link': post_data.get('url', ''),
@@ -196,6 +227,11 @@ class ProductHuntScraper:
             'product_link': post_data.get('website', ''),
             'ai_description': ai_description,
             'scraped_at': datetime.now().isoformat(),
+            # Business model and technology classification
+            'Business': business_model,
+            'Tech': technology,
+            'Moat': moat,
+            'moat_embedding': moat_embedding,
             # Metadata for reference
             '_metadata': {
                 'votes': post_data.get('votesCount', 0),
@@ -262,7 +298,7 @@ class ProductHuntScraper:
         """Generate search keywords using OpenAI"""
         if not OPENAI_AVAILABLE or not openai_client:
             return None
-        
+
         try:
             prompt = f"""Extract 5-10 relevant search keywords for this product.
 Return ONLY a comma-separated list of keywords, no explanations.
@@ -272,22 +308,181 @@ Overview: {product['overview']}
 Description: {product['description'][:200]}
 
 Keywords:"""
-            
+
             response = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 max_tokens=100
             )
-            
+
             keywords_text = response.choices[0].message.content.strip()
             keywords = [k.strip() for k in keywords_text.split(',')]
             return keywords[:10]  # Limit to 10
-            
+
         except Exception as e:
             self.logger.error(f"Failed to generate keywords: {e}")
             return None
-    
+
+    def extract_business_model(self, product: Dict) -> Optional[str]:
+        """Extract business model from product description"""
+        if not OPENAI_AVAILABLE or not openai_client:
+            return self._extract_business_model_simple(product)
+
+        try:
+            prompt = f"""Analyze this product and determine its primary business model.
+Return ONLY the business model type, no explanations.
+
+Product Name: {product['product_name']}
+Overview: {product['overview']}
+Description: {product['description'][:300]}
+
+Common business models: SaaS, Enterprise Software, Data-as-a-Service, API Platform, Consulting, Open Source, Freemium, Marketplace, etc.
+
+Business Model:"""
+
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                max_tokens=50
+            )
+
+            business_model = response.choices[0].message.content.strip()
+            return business_model if business_model else None
+
+        except Exception as e:
+            self.logger.error(f"Failed to extract business model: {e}")
+            return self._extract_business_model_simple(product)
+
+    def extract_technology(self, product: Dict) -> Optional[str]:
+        """Extract primary technology from product description"""
+        if not OPENAI_AVAILABLE or not openai_client:
+            return self._extract_technology_simple(product)
+
+        try:
+            prompt = f"""Analyze this product and determine its primary technology focus.
+Return ONLY the technology type, no explanations.
+
+Product Name: {product['product_name']}
+Overview: {product['overview']}
+Description: {product['description'][:300]}
+
+Common technologies: AI/ML, Data Analytics, Automation, Blockchain, Cloud, Mobile, Web, IoT, etc.
+
+Technology:"""
+
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                max_tokens=50
+            )
+
+            technology = response.choices[0].message.content.strip()
+            return technology if technology else None
+
+        except Exception as e:
+            self.logger.error(f"Failed to extract technology: {e}")
+            return self._extract_technology_simple(product)
+
+    def _extract_business_model_simple(self, product: Dict) -> Optional[str]:
+        """Simple rule-based business model extraction"""
+        text = f"{product['product_name']} {product['overview']} {product.get('description', '')}".lower()
+
+        if any(word in text for word in ['saas', 'subscription', 'monthly', 'platform']):
+            return 'SaaS Platform'
+        elif any(word in text for word in ['enterprise', 'licensing', 'on-premise']):
+            return 'Enterprise Software'
+        elif any(word in text for word in ['api', 'data service', 'data provider']):
+            return 'Data-as-a-Service'
+        elif any(word in text for word in ['ai', 'machine learning', 'automation']):
+            return 'AI-Powered Analytics'
+        elif any(word in text for word in ['consulting', 'professional services']):
+            return 'Consulting Services'
+        elif any(word in text for word in ['open source', 'free']):
+            return 'Open Source'
+        else:
+            return 'Other'
+
+    def _extract_technology_simple(self, product: Dict) -> Optional[str]:
+        """Simple rule-based technology extraction"""
+        text = f"{product['product_name']} {product['overview']} {product.get('description', '')}".lower()
+
+        if any(word in text for word in ['ai', 'artificial intelligence', 'machine learning', 'ml']):
+            return 'AI/ML'
+        elif any(word in text for word in ['data', 'analytics', 'dashboard', 'reporting']):
+            return 'Data Analytics'
+        elif any(word in text for word in ['automation', 'workflow', 'process']):
+            return 'Automation'
+        elif any(word in text for word in ['blockchain', 'crypto', 'web3']):
+            return 'Blockchain'
+        elif any(word in text for word in ['cloud', 'saas']):
+            return 'Cloud/SaaS'
+        elif any(word in text for word in ['mobile', 'ios', 'android']):
+            return 'Mobile'
+        else:
+            return 'Other'
+
+    def generate_moat(self, product: Dict) -> Optional[str]:
+        """Generate competitive moat analysis for the product"""
+        if not OPENAI_AVAILABLE or not openai_client:
+            return self._generate_moat_simple(product)
+
+        try:
+            prompt = f"""Analyze this financial analytics product and identify its competitive moat/advantage.
+
+Product Name: {product['product_name']}
+Overview: {product['overview']}
+Description: {product['description'][:300]}
+Business Model: {product.get('Business', 'Unknown')}
+Technology: {product.get('Tech', 'Unknown')}
+
+Identify the key competitive advantages that make this product defensible:
+
+1. Technology/IP advantages (unique algorithms, data sources, etc.)
+2. Network effects (user base, data advantages, etc.)
+3. Brand/reputation advantages
+4. Cost advantages
+5. Regulatory/compliance advantages
+6. Switching costs for customers
+
+Return a concise 2-3 sentence description of their competitive moat, focusing on how they make money and maintain their advantage.
+
+Moat Description:"""
+
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=150
+            )
+
+            moat = response.choices[0].message.content.strip()
+            return moat if moat else None
+
+        except Exception as e:
+            self.logger.error(f"Failed to generate moat: {e}")
+            return self._generate_moat_simple(product)
+
+    def _generate_moat_simple(self, product: Dict) -> Optional[str]:
+        """Simple rule-based moat generation"""
+        text = f"{product['product_name']} {product.get('overview', '')} {product.get('description', '')}".lower()
+        business_model = product.get('Business', '').lower()
+        technology = product.get('Tech', '').lower()
+
+        # Generate moat based on business model and technology
+        if 'saas' in business_model and 'ai' in technology:
+            return 'Proprietary AI algorithms and machine learning models provide predictive accuracy advantages, while subscription-based SaaS model creates recurring revenue and customer lock-in through data integration.'
+        elif 'data' in business_model.lower():
+            return 'Exclusive data partnerships and proprietary collection methods create data quality advantages, with API-based delivery enabling seamless integration and customer retention.'
+        elif 'enterprise' in business_model.lower():
+            return 'Deep regulatory compliance expertise and complex integration capabilities create high switching costs, while enterprise licensing provides stable, high-value revenue streams.'
+        elif 'ai' in technology.lower():
+            return 'Advanced machine learning models and continuous algorithm improvement provide accuracy advantages, with platform effects creating data network advantages over time.'
+        else:
+            return 'Innovative technology stack and market positioning provide differentiation, with scalable infrastructure enabling cost advantages at scale.'
+
     def generate_keyword_embedding(self, product_name: str, keywords: Optional[List[str]], overview: str) -> Optional[List[float]]:
         """Generate focused embedding from product name + keywords + overview for better search"""
         if not OPENAI_AVAILABLE or not openai_client:
