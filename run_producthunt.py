@@ -31,7 +31,7 @@ def main():
     parser.add_argument(
         '--limit',
         type=int,
-        default=50,
+        default=25,
         help='Number of products to fetch (default: 50)'
     )
     parser.add_argument(

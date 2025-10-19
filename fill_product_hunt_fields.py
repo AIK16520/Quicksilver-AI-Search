@@ -58,7 +58,7 @@ Business Model:"""
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
-                max_tokens=50
+                max_tokens=25
             )
 
             business_model = response.choices[0].message.content.strip()
