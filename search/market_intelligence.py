@@ -7,6 +7,7 @@ Performs comprehensive analysis across multiple dimensions: companies, tech, bus
 
 import logging
 import requests
+import re
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -33,6 +34,12 @@ class DimensionResults:
     companies_mentioned: List[str]
     technologies_mentioned: List[str]
     insights: Optional[str] = None
+
+    # Enhanced fields for detailed information
+    technology_usage_details: Dict[str, List[str]] = field(default_factory=dict)  # tech -> [specific usage examples]
+    business_model_details: List[str] = field(default_factory=list)  # specific business model descriptions
+    market_insights: List[str] = field(default_factory=list)  # specific market trend insights
+    company_business_models: Dict[str, List[str]] = field(default_factory=dict)  # company -> [business models used]
 
 @dataclass
 class MarketIntelligenceReport:
@@ -180,24 +187,100 @@ class MarketIntelligenceService:
             
             # Execute queries for this dimension
             for query in queries[:3]:  # Limit queries per dimension
-                search_results = self._brave_search(query, num_results=5)
+                # Add financial domain filtering to search query
+                financial_terms = ["hedge fund", "trading", "financial analytics", "fintech", "investment management"]
+                enhanced_query = f"{query} {' '.join(financial_terms[:2])}"
+
+                # Search web results with enhanced query
+                search_results = self._brave_search(enhanced_query, num_results=5)
                 
                 for result in search_results:
+                    # Apply relevance scoring for financial context
+                    title = result.get('title', '')
+                    description = result.get('description', '')
+                    text = f"{title} {description}".lower()
+
+                    # Financial keywords that boost relevance
+                    financial_keywords = ['hedge fund', 'trading', 'financial', 'fintech', 'investment', 'portfolio', 'market data', 'trading algorithm', 'risk management', 'asset management']
+                    # Keywords that penalize relevance (irrelevant domains)
+                    irrelevant_keywords = ['healthcare', 'medical', 'hospital', 'patient', 'doctor', 'visual perception', 'speech recognition', 'computer vision', 'image recognition']
+
+                    relevance_score = 1.0
+                    financial_matches = sum(1 for keyword in financial_keywords if keyword in text)
+                    irrelevant_matches = sum(1 for keyword in irrelevant_keywords if keyword in text)
+
+                    # Boost for financial keywords, penalize for irrelevant keywords
+                    relevance_score += financial_matches * 0.3
+                    relevance_score -= irrelevant_matches * 0.5
+
+                    # Skip results that are clearly irrelevant (negative relevance)
+                    if relevance_score <= 0:
+                        continue
+
                     articles.append({
-                        'title': result.get('title', ''),
+                        'title': title,
                         'url': result.get('url', ''),
-                        'description': result.get('description', ''),
-                        'query': query
+                        'description': description,
+                        'query': query,
+                        'source': 'web',
+                        'relevance_score': relevance_score
                     })
-                    
+
                     # Extract mentions (simple approach)
-                    text = f"{result.get('title', '')} {result.get('description', '')}".lower()
-                    
                     # Extract company names (basic pattern matching)
                     for word in text.split():
                         if word and word[0].isupper() and len(word) > 3:
                             companies_mentioned.add(word)
-                    
+
+                    # Extract tech mentions
+                    for tech in components.technologies:
+                        if tech.lower() in text:
+                            technologies_mentioned.add(tech)
+                
+                # Search Product Hunt products for this query with domain filtering
+                # Add financial domain filtering to Product Hunt search
+                financial_terms = ["hedge fund", "trading", "financial", "fintech"]
+                enhanced_ph_query = f"{query} {' '.join(financial_terms[:2])}"
+                ph_products = self._search_product_hunt_for_dimension(enhanced_ph_query, max_results=3)
+                for product in ph_products:
+                    # Apply relevance scoring for Product Hunt products too
+                    title = product.get('product_name', '')
+                    description = product.get('overview', '')
+                    text = f"{title} {description}".lower()
+
+                    # Financial keywords that boost relevance
+                    financial_keywords = ['hedge fund', 'trading', 'financial', 'fintech', 'investment', 'portfolio', 'market data', 'trading algorithm', 'risk management', 'asset management']
+                    # Keywords that penalize relevance (irrelevant domains)
+                    irrelevant_keywords = ['healthcare', 'medical', 'hospital', 'patient', 'doctor', 'visual perception', 'speech recognition', 'computer vision', 'image recognition']
+
+                    relevance_score = 1.0 + product.get('weight_boost', 1.5)  # Start with Product Hunt boost
+                    financial_matches = sum(1 for keyword in financial_keywords if keyword in text)
+                    irrelevant_matches = sum(1 for keyword in irrelevant_keywords if keyword in text)
+
+                    # Boost for financial keywords, penalize for irrelevant keywords
+                    relevance_score += financial_matches * 0.3
+                    relevance_score -= irrelevant_matches * 0.5
+
+                    # Skip results that are clearly irrelevant (negative relevance)
+                    if relevance_score <= 0:
+                        continue
+
+                    articles.append({
+                        'title': title,
+                        'url': product.get('product_link', ''),
+                        'description': description,
+                        'query': query,
+                        'source': 'product_hunt',
+                        'producthunt_link': product.get('producthunt_link', ''),
+                        'weight_boost': relevance_score
+                    })
+
+                    # Extract mentions from Product Hunt products
+                    # Extract company names
+                    for word in text.split():
+                        if word and word[0].isupper() and len(word) > 3:
+                            companies_mentioned.add(word)
+
                     # Extract tech mentions
                     for tech in components.technologies:
                         if tech.lower() in text:
@@ -205,9 +288,18 @@ class MarketIntelligenceService:
                 
                 time.sleep(self.min_request_interval)  # Rate limiting
             
+            # Extract technology usage details
+            technology_usage = self._extract_technology_usage_details(articles)
+
+            # Extract business model details
+            business_models, company_business_models = self._extract_business_model_details(articles)
+
+            # Extract market insights
+            market_insights = self._extract_market_insights(articles)
+
             # Generate key findings for this dimension
             key_findings = self._extract_key_findings(articles, dimension)
-            
+
             results[dimension] = DimensionResults(
                 dimension=dimension,
                 description=search_plan['dimensions'][dimension]['description'],
@@ -215,10 +307,145 @@ class MarketIntelligenceService:
                 articles=articles[:max_results],
                 key_findings=key_findings,
                 companies_mentioned=list(companies_mentioned)[:10],
-                technologies_mentioned=list(technologies_mentioned)
+                technologies_mentioned=list(technologies_mentioned),
+                technology_usage_details=technology_usage,
+                business_model_details=business_models[:5],  # Limit to top 5
+                market_insights=market_insights[:3],  # Limit to top 3
+                company_business_models=company_business_models
             )
         
         return results
+    
+    def _search_product_hunt_for_dimension(self, query: str, max_results: int = 3) -> List[Dict]:
+        """Search Product Hunt products for a specific query/dimension"""
+        if not self.openai_client:
+            logger.warning("OpenAI client not available, skipping Product Hunt search")
+            return []
+
+        try:
+            # Generate query embedding
+            query_embedding = self._generate_embedding(query)
+            if not query_embedding:
+                return []
+
+            # Search both embedding types
+            desc_results = self._search_product_embeddings(query_embedding, 'embedding', max_results)
+            keyword_results = self._search_product_embeddings(query_embedding, 'keyword_embedding', max_results)
+
+            # Merge and deduplicate results
+            combined = self._merge_product_results(desc_results, keyword_results)
+
+            # Add source type and weight boost
+            for result in combined:
+                result['source_type'] = 'product_hunt'
+                result['weight_boost'] = 1.5
+
+            logger.info(f"Found {len(combined)} Product Hunt products for query: '{query}'")
+            return combined
+            
+        except Exception as e:
+            logger.error(f"Product Hunt search failed for dimension: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return []
+    
+    def _generate_embedding(self, text: str) -> Optional[List[float]]:
+        """Generate embedding for search query"""
+        try:
+            response = self.openai_client.embeddings.create(
+                model="text-embedding-3-small",
+                input=text
+            )
+            return response.data[0].embedding
+        except Exception as e:
+            logger.error(f"Embedding generation failed: {e}")
+            return None
+    
+    def _search_product_embeddings(self, query_embedding: List[float],
+                                 embedding_column: str, limit: int) -> List[Dict]:
+        """Search specific embedding column in Product Hunt table"""
+        try:
+            import numpy as np
+            
+            # Fetch products with embeddings
+            query = self.supabase.table('product_hunt_products').select(
+                f'id, product_name, overview, description, product_link, producthunt_link, Business, Tech, {embedding_column}'
+            ).not_.is_(embedding_column, 'null')
+
+            response = query.execute()
+            
+            if not response.data:
+                return []
+            
+            # Calculate cosine similarity in Python
+            query_vec = np.array(query_embedding, dtype=np.float32)
+            products_with_similarity = []
+            
+            for row in response.data:
+                product_embedding = row.get(embedding_column)
+                if not product_embedding:
+                    continue
+                
+                try:
+                    # Parse embedding
+                    if isinstance(product_embedding, str):
+                        import json
+                        product_embedding = json.loads(product_embedding)
+                    
+                    product_vec = np.array(product_embedding, dtype=np.float32)
+                    
+                    if len(product_vec) != len(query_vec):
+                        continue
+                    
+                    # Calculate cosine similarity
+                    similarity = np.dot(query_vec, product_vec) / (
+                        np.linalg.norm(query_vec) * np.linalg.norm(product_vec)
+                    )
+                    
+                    products_with_similarity.append({
+                        'id': row.get('id'),
+                        'product_name': row.get('product_name', ''),
+                        'overview': row.get('overview', ''),
+                        'description': row.get('description', ''),
+                        'product_link': row.get('product_link', ''),
+                        'producthunt_link': row.get('producthunt_link', ''),
+                        'similarity': float(similarity)
+                    })
+                    
+                except Exception as e:
+                    logger.debug(f"Skipping product due to error: {e}")
+                    continue
+            
+            # Sort by similarity and return top results
+            products_with_similarity.sort(key=lambda x: x['similarity'], reverse=True)
+            return products_with_similarity[:limit]
+            
+        except Exception as e:
+            logger.error(f"Product Hunt embedding search failed: {e}")
+            return []
+    
+    def _merge_product_results(self, desc_results: List[Dict], keyword_results: List[Dict]) -> List[Dict]:
+        """Merge description and keyword results, removing duplicates"""
+        seen_products = set()
+        merged = []
+        
+        # Add description results first
+        for result in desc_results:
+            product_id = result.get('id')
+            if product_id and product_id not in seen_products:
+                result['search_type'] = 'description'
+                merged.append(result)
+                seen_products.add(product_id)
+        
+        # Add keyword results
+        for result in keyword_results:
+            product_id = result.get('id')
+            if product_id and product_id not in seen_products:
+                result['search_type'] = 'keyword'
+                merged.append(result)
+                seen_products.add(product_id)
+        
+        return merged
     
     def _perform_competitive_analysis(
         self,
@@ -267,7 +494,11 @@ class MarketIntelligenceService:
             articles=articles[:max_results],
             key_findings=key_findings,
             companies_mentioned=companies_mentioned,
-            technologies_mentioned=components.technologies
+            technologies_mentioned=components.technologies,
+            technology_usage_details={},
+            business_model_details=[],
+            market_insights=[],
+            company_business_models={}
         )
     
     def _brave_search(self, query: str, num_results: int = 5) -> List[Dict]:
@@ -307,29 +538,268 @@ class MarketIntelligenceService:
     
     def _extract_key_findings(self, articles: List[Dict], dimension: str) -> List[str]:
         """Extract key findings from articles for a dimension"""
-        
+
         if not articles:
             return [f"No articles found for {dimension}"]
-        
+
         findings = []
-        
-        # Count mentions in titles
-        title_words = {}
-        for article in articles:
-            title = article.get('title', '').lower()
-            words = [w for w in title.split() if len(w) > 4]
-            for word in words:
-                title_words[word] = title_words.get(word, 0) + 1
-        
-        # Top mentioned terms
-        if title_words:
-            top_terms = sorted(title_words.items(), key=lambda x: x[1], reverse=True)[:3]
-            findings.append(f"Top mentioned: {', '.join([t[0] for t in top_terms])}")
-        
+
+        # If no specific findings, fall back to basic analysis
+        if not findings:
+            # Count mentions in titles and descriptions
+            content_words = {}
+            for article in articles:
+                content = f"{article.get('title', '')} {article.get('description', '')}".lower()
+                words = [w for w in re.findall(r'\b\w{4,}\b', content) if len(w) > 3]
+                for word in words:
+                    content_words[word] = content_words.get(word, 0) + 1
+
+            # Top mentioned terms
+            if content_words:
+                top_terms = sorted(content_words.items(), key=lambda x: x[1], reverse=True)[:3]
+                findings.append(f"Key topics: {', '.join([t[0] for t in top_terms])}")
+
+        # Always include article count
         findings.append(f"Found {len(articles)} relevant articles")
-        
+
         return findings
-    
+
+    def _extract_technology_usage_details(self, articles: List[Dict]) -> Dict[str, List[str]]:
+        """Extract detailed technology usage information from articles using AI"""
+        if not self.openai_client or not articles:
+            return {}
+
+        # Compile article text for AI analysis
+        articles_text = "\n\n".join([
+            f"Title: {article.get('title', '')}\nDescription: {article.get('description', '')}"
+            for article in articles[:10]  # Limit to top 10 articles
+        ])
+
+        prompt = f"""Analyze these FINANCIAL SERVICES articles and extract SPECIFIC technology usage information for hedge funds, trading, and financial analytics. You MUST provide concrete details about how technologies are being used in FINANCIAL contexts only.
+
+Articles:
+{articles_text}
+
+CRITICAL: ONLY extract technologies related to FINANCIAL SERVICES, hedge funds, trading, or fintech. IGNORE healthcare, visual perception, general AI, or unrelated domains.
+
+Extract and return ONLY valid JSON:
+{{
+  "technologies": [
+    {{
+      "name": "Financial Technology Name",
+      "usage_examples": ["Concrete financial usage example", "Another trading/fintech example"],
+      "companies_using": ["Financial Company 1", "Trading Firm 2"],
+      "innovation_details": "Specific financial innovation details",
+      "domain": "financial services"
+    }}
+  ]
+}}
+
+CRITICAL REQUIREMENTS:
+- ONLY include technologies used in FINANCIAL SERVICES, hedge funds, trading, or fintech
+- EXCLUDE healthcare, visual perception, general AI applications, or unrelated domains
+- If articles mention "AI technologies" in financial contexts, extract the specific financial applications
+- Focus on financial data analysis, trading algorithms, risk management, portfolio optimization
+- Do NOT return empty results if financial technologies are mentioned
+
+Focus on extracting:
+- Financial technology names and applications only
+- Concrete financial usage examples with details
+- Actual financial companies using these technologies
+- Specific financial innovations and implementations"""
+
+        try:
+            response = self.openai_client.chat.completions.create(
+                model=GPT_MODEL,
+                messages=[
+                    {"role": "system", "content": "You are a technology analyst extracting usage patterns. Always return valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=800
+            )
+            
+            import json
+            result = json.loads(response.choices[0].message.content.strip())
+            
+            # Convert to the expected format
+            technology_usage = {}
+            for tech in result.get('technologies', []):
+                tech_name = tech.get('name', '')
+                usage_examples = tech.get('usage_examples', [])
+                if tech_name and usage_examples:
+                    technology_usage[tech_name] = usage_examples
+            
+            return technology_usage
+            
+        except Exception as e:
+            logger.error(f"AI technology extraction failed: {e}")
+            return {}
+
+    def _extract_business_model_details(self, articles: List[Dict]) -> tuple[List[str], Dict[str, List[str]]]:
+        """Extract business model details using AI to discover NEW and INNOVATIVE models"""
+        if not self.openai_client or not articles:
+            return [], {}
+
+        # Compile article text for AI analysis
+        articles_text = "\n\n".join([
+            f"Title: {article.get('title', '')}\nDescription: {article.get('description', '')}\nURL: {article.get('url', '')}"
+            for article in articles[:10]  # Limit to top 10 articles
+        ])
+
+        prompt = f"""Analyze these FINANCIAL SERVICES articles and extract SPECIFIC business model information for hedge funds, trading, and financial analytics. You MUST provide concrete details about innovative FINANCIAL approaches.
+
+Articles:
+{articles_text}
+
+CRITICAL: ONLY extract business models related to FINANCIAL SERVICES, hedge funds, trading, or fintech. IGNORE healthcare, visual perception, general software, or unrelated domains.
+
+Extract and return ONLY valid JSON:
+{{
+  "business_models": [
+    {{
+      "name": "Specific Financial Business Model",
+      "description": "Detailed financial business model explanation with specific examples",
+      "companies": ["Financial Company 1", "Trading Firm 2"],
+      "innovation_level": "new/emerging/innovative/traditional",
+      "specific_approach": "Concrete financial innovation details",
+      "domain": "financial services"
+    }}
+  ]
+}}
+
+CRITICAL REQUIREMENTS:
+- ONLY include business models for FINANCIAL SERVICES, hedge funds, trading, or fintech
+- EXCLUDE healthcare, visual perception, general software, or unrelated business models
+- Focus on financial monetization strategies, trading platforms, data services, investment tools
+- Look for hedge fund specific models, trading algorithms, financial data services
+- Do NOT return empty results if financial innovations are mentioned
+
+Focus on extracting:
+- Financial business model innovations only
+- Concrete financial monetization approaches
+- Actual financial companies and their strategies
+- Specific financial innovations and revenue models"""
+
+        try:
+            response = self.openai_client.chat.completions.create(
+                model=GPT_MODEL,
+                messages=[
+                    {"role": "system", "content": "You are a business model analyst discovering innovative approaches. Always return valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.4,
+                max_tokens=1000
+            )
+            
+            import json
+            result = json.loads(response.choices[0].message.content.strip())
+            
+            # Convert to the expected format
+            business_models = []
+            company_business_models = {}
+            
+            for model in result.get('business_models', []):
+                model_name = model.get('name', '')
+                model_description = model.get('description', '')
+                companies = model.get('companies', [])
+                innovation_level = model.get('innovation_level', '')
+                
+                if model_name and model_description:
+                    # Create descriptive business model entry
+                    full_description = f"{model_name}: {model_description}"
+                    if innovation_level and innovation_level != 'traditional':
+                        full_description += f" (Innovation: {innovation_level})"
+                    
+                    business_models.append(full_description)
+                    
+                    # Associate companies with this business model
+                    for company in companies:
+                        if company not in company_business_models:
+                            company_business_models[company] = []
+                        if model_name not in company_business_models[company]:
+                            company_business_models[company].append(model_name)
+            
+            return business_models, company_business_models
+            
+        except Exception as e:
+            logger.error(f"AI business model extraction failed: {e}")
+            return [], {}
+
+    def _extract_market_insights(self, articles: List[Dict]) -> List[str]:
+        """Extract market insights from articles using AI"""
+        if not self.openai_client or not articles:
+            return []
+
+        # Compile article text for AI analysis
+        articles_text = "\n\n".join([
+            f"Title: {article.get('title', '')}\nDescription: {article.get('description', '')}"
+            for article in articles[:10]  # Limit to top 10 articles
+        ])
+
+        prompt = f"""Analyze these FINANCIAL SERVICES articles and extract SPECIFIC market insights for hedge funds, trading, and financial analytics. You MUST provide concrete details about FINANCIAL trends and opportunities.
+
+Articles:
+{articles_text}
+
+CRITICAL: ONLY extract insights related to FINANCIAL SERVICES, hedge funds, trading, or fintech. IGNORE healthcare, visual perception, general AI, or unrelated domains.
+
+Extract and return ONLY valid JSON:
+{{
+  "market_insights": [
+    "Specific financial market insight with concrete details and examples",
+    "Another financial market trend with specific companies and statistics"
+  ],
+  "innovative_approaches": [
+    "Specific financial innovative approach mentioned with details",
+    "Another financial innovative strategy with company examples"
+  ],
+  "emerging_players": [
+    "Specific emerging financial company with their approach",
+    "Another new financial player with their strategy"
+  ]
+}}
+
+CRITICAL REQUIREMENTS:
+- ONLY include insights for FINANCIAL SERVICES, hedge funds, trading, or fintech
+- EXCLUDE healthcare, visual perception, general AI, or unrelated market insights
+- Focus on financial market trends, trading innovations, hedge fund technologies
+- Look for specific financial opportunities, investment trends, fintech innovations
+- Do NOT return empty results if financial innovations are mentioned
+
+Focus on extracting:
+- Financial market insights and trends only
+- Specific financial innovative approaches with concrete details
+- Actual financial companies and their strategies
+- Concrete financial market opportunities and gaps"""
+
+        try:
+            response = self.openai_client.chat.completions.create(
+                model=GPT_MODEL,
+                messages=[
+                    {"role": "system", "content": "You are a market analyst extracting insights. Always return valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=600
+            )
+            
+            import json
+            result = json.loads(response.choices[0].message.content.strip())
+            
+            # Combine all insights into a single list
+            all_insights = []
+            all_insights.extend(result.get('market_insights', []))
+            all_insights.extend(result.get('innovative_approaches', []))
+            all_insights.extend(result.get('emerging_players', []))
+            
+            return all_insights
+            
+        except Exception as e:
+            logger.error(f"AI market insights extraction failed: {e}")
+            return []
+
+
     def _generate_aggregated_insights(
         self,
         query: str,
@@ -361,31 +831,32 @@ Key Findings by Dimension:
         
         prompt = f"""{context}
 
-Based on this market intelligence analysis, provide:
+Based on this market intelligence analysis, provide SPECIFIC insights about innovative approaches and emerging players:
 
-1. EXECUTIVE SUMMARY (2-3 sentences): High-level overview of the space and market dynamics
-2. KEY PLAYERS (list 5-7 companies with brief descriptions of what they do)
-3. EMERGING TRENDS (list 3-5 key trends or innovations in the market)
+1. EXECUTIVE SUMMARY (2-3 sentences): High-level overview highlighting SPECIFIC innovative approaches discovered
+2. KEY PLAYERS (list 5-7 companies with SPECIFIC descriptions of their innovative approaches)
+3. EMERGING TRENDS (list 3-5 SPECIFIC trends with concrete examples of innovative approaches)
 4. RECOMMENDED NEXT STEPS (list 3-4 specific things to research deeper)
 
-IMPORTANT RULES:
-- Focus ONLY on the market space being analyzed
-- Do NOT mention "portfolio companies" or make investment recommendations
-- Do NOT suggest "following up with companies" - this is pure market research
-- Be specific about company names, technologies, and trends
-- When mentioning partnerships, name the specific companies involved
+CRITICAL REQUIREMENTS:
+- If you mention "innovative approaches" or "emerging players", you MUST provide SPECIFIC details about what these approaches are
+- Extract concrete examples of HOW companies are innovating
+- Provide specific company names and their unique strategies
+- If you see vague terms, dig deeper to find the actual approaches
+- Do NOT use generic phrases like "innovative approaches" without explaining what they are
+- Be specific about technologies, business models, and strategies mentioned
 
 Return ONLY valid JSON:
 {{
-  "executive_summary": "Market overview without portfolio references",
+  "executive_summary": "Market overview highlighting SPECIFIC innovative approaches and concrete examples",
   "key_players": [
-    {{"name": "Specific Company Name", "description": "What they actually do"}},
+    {{"name": "Specific Company Name", "description": "Specific innovative approach they use with concrete details"}},
     ...
   ],
-  "emerging_trends": ["Specific trend with examples", "trend 2", ...],
+  "emerging_trends": ["Specific innovative approach with concrete examples", "Another specific trend with details", ...],
   "recommended_next_steps": [
-    "Deep dive on [specific company/technology]",
-    "Research [specific topic]",
+    "Deep dive on [specific innovative approach/company]",
+    "Research [specific innovative strategy]",
     ...
   ]
 }}"""
@@ -423,6 +894,10 @@ Return ONLY valid JSON:
             articles=[],
             key_findings=[],
             companies_mentioned=[],
-            technologies_mentioned=[]
+            technologies_mentioned=[],
+            technology_usage_details={},
+            business_model_details=[],
+            market_insights=[],
+            company_business_models={}
         )
 

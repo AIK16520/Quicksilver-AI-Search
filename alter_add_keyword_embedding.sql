@@ -12,3 +12,4 @@ FROM information_schema.columns
 WHERE table_name = 'product_hunt_products' 
 AND column_name = 'keyword_embedding';
 
+

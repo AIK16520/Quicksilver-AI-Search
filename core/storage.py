@@ -235,6 +235,22 @@ class StorageManager:
             if 'keywords' in product_data and product_data['keywords']:
                 insert_data['keywords'] = product_data['keywords']
 
+            # Add business model if available
+            if 'Business' in product_data and product_data['Business']:
+                insert_data['Business'] = product_data['Business']
+
+            # Add technology if available
+            if 'Tech' in product_data and product_data['Tech']:
+                insert_data['Tech'] = product_data['Tech']
+
+            # Add moat if available
+            if 'Moat' in product_data and product_data['Moat']:
+                insert_data['Moat'] = product_data['Moat']
+
+            # Add moat embedding if available
+            if 'moat_embedding' in product_data and product_data['moat_embedding']:
+                insert_data['moat_embedding'] = product_data['moat_embedding']
+
             # Use upsert to handle duplicates (update if exists, insert if not)
             response = self.supabase.table('product_hunt_products').upsert(
                 insert_data,

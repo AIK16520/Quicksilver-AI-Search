@@ -22,3 +22,4 @@ pipeline_script = Path(__file__).parent / "pipeline" / "run_producthunt_daily.py
 result = subprocess.run([sys.executable, str(pipeline_script)] + sys.argv[1:])
 sys.exit(result.returncode)
 
+

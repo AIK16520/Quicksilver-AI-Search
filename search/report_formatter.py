@@ -120,12 +120,19 @@ class ReportFormatter:
             'key_findings': dimension.key_findings,
             'companies_mentioned': dimension.companies_mentioned,
             'technologies_mentioned': dimension.technologies_mentioned,
+            'technology_usage_details': dimension.technology_usage_details,  # Include detailed tech usage
+            'business_model_details': dimension.business_model_details,  # Include business models
+            'market_insights': dimension.market_insights,  # Include market insights
+            'company_business_models': dimension.company_business_models,  # Include company-to-model mapping
             'articles': [
                 {
                     'title': article.get('title', ''),
                     'url': article.get('url', ''),
                     'description': article.get('description', '')[:200],  # Truncate
-                    'source_query': article.get('query', '')
+                    'source_query': article.get('query', ''),
+                    'source': article.get('source', 'web'),  # Preserve source for Product Hunt
+                    'producthunt_link': article.get('producthunt_link', ''),  # Include PH link
+                    'weight_boost': article.get('weight_boost', 1.0)  # Include weight boost
                 }
                 for article in dimension.articles
             ],

@@ -42,6 +42,17 @@ class BeehiveScraper:
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--disable-web-security")
         chrome_options.add_argument("--disable-features=VizDisplayCompositor")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-plugins")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--no-first-run")
+        chrome_options.add_argument("--no-default-browser-check")
+        chrome_options.add_argument("--disable-default-apps")
+        chrome_options.add_argument("--disable-background-timer-throttling")
+        chrome_options.add_argument("--disable-backgrounding-occluded-windows")
+        chrome_options.add_argument("--disable-renderer-backgrounding")
+        chrome_options.add_argument("--disable-ipc-flooding-protection")
 
         try:
             # Use ChromeDriverManager to handle driver installation and path resolution
@@ -56,17 +67,63 @@ class BeehiveScraper:
                 driver_path = ChromeDriverManager().install()
                 print(f"ChromeDriver installed at: {driver_path}")
 
-                # Verify the driver path points to the actual executable
-                if driver_path and os.path.exists(driver_path):
-                    # Check if it's actually an executable file (not a text file like THIRD_PARTY_NOTICES)
-                    if os.path.isfile(driver_path) and os.access(driver_path, os.X_OK):
-                        service = ChromeService(driver_path)
-                        print(f"Using verified ChromeDriver at: {driver_path}")
+                # The driver_path might be a directory, we need to find the actual executable
+                if driver_path:
+                    if os.path.isfile(driver_path):
+                        # It's already a file path
+                        actual_driver_path = driver_path
                     else:
-                        print(f"Driver file is not executable, re-downloading...")
-                        raise Exception("Driver not executable")
+                        # It's a directory, find the chromedriver executable
+                        print(f"Looking for chromedriver executable in directory: {driver_path}")
+
+                        # Look for common chromedriver executable names
+                        possible_names = ['chromedriver', 'chromedriver.exe', 'chromedriver-linux64', 'chromedriver-win32.exe']
+
+                        actual_driver_path = None
+                        for name in possible_names:
+                            potential_path = os.path.join(driver_path, name)
+                            if os.path.exists(potential_path) and os.path.isfile(potential_path):
+                                actual_driver_path = potential_path
+                                break
+
+                        # Also check for files in subdirectories
+                        if not actual_driver_path:
+                            for root, dirs, files in os.walk(driver_path):
+                                for file in files:
+                                    if 'chromedriver' in file.lower():
+                                        actual_driver_path = os.path.join(root, file)
+                                        break
+                                if actual_driver_path:
+                                    break
+
+                        if not actual_driver_path:
+                            # Try to find any executable file in the directory
+                            for root, dirs, files in os.walk(driver_path):
+                                for file in files:
+                                    file_path = os.path.join(root, file)
+                                    if os.path.isfile(file_path) and os.access(file_path, os.X_OK):
+                                        actual_driver_path = file_path
+                                        break
+                                if actual_driver_path:
+                                    break
+
+                    if actual_driver_path and os.path.exists(actual_driver_path):
+                        print(f"Found ChromeDriver executable at: {actual_driver_path}")
+                        # Make sure it's executable
+                        if not os.access(actual_driver_path, os.X_OK):
+                            try:
+                                os.chmod(actual_driver_path, 0o755)
+                                print(f"Made ChromeDriver executable: {actual_driver_path}")
+                            except Exception as e:
+                                print(f"Warning: Could not make ChromeDriver executable: {e}")
+
+                        service = ChromeService(actual_driver_path)
+                        print(f"Using verified ChromeDriver at: {actual_driver_path}")
+                    else:
+                        print(f"Could not find ChromeDriver executable in {driver_path}")
+                        raise Exception(f"ChromeDriver executable not found in {driver_path}")
                 else:
-                    raise Exception("Driver path not found")
+                    raise Exception("ChromeDriverManager returned empty path")
 
             except Exception as e:
                 print(f"Error with automatic driver management: {e}")
@@ -74,11 +131,34 @@ class BeehiveScraper:
 
                 # Fallback: try to use system chromedriver if available
                 try:
+                    print("Attempting to use system ChromeDriver...")
                     service = ChromeService()
                     print("Using system ChromeDriver...")
                 except Exception as e2:
                     print(f"System ChromeDriver also failed: {e2}")
-                    raise Exception(f"All ChromeDriver methods failed: {e}")
+
+                    # Last resort: try to find chromedriver in common system locations
+                    print("Trying to find ChromeDriver in common system locations...")
+                    common_paths = [
+                        "/usr/bin/chromedriver",
+                        "/usr/local/bin/chromedriver",
+                        "/opt/chromedriver",
+                        "C:\\Program Files\\Google\\Chrome\\Application\\chromedriver.exe",
+                        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chromedriver.exe"
+                    ]
+
+                    found_path = None
+                    for path in common_paths:
+                        if os.path.exists(path) and os.path.isfile(path):
+                            found_path = path
+                            break
+
+                    if found_path:
+                        print(f"Found ChromeDriver at system location: {found_path}")
+                        service = ChromeService(found_path)
+                    else:
+                        print("ChromeDriver not found in any common system location")
+                        raise Exception(f"All ChromeDriver methods failed. Original error: {e}. System error: {e2}")
 
         except Exception as e:
             print(f"Error: ChromeDriver setup failed: {e}")

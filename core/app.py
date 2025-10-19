@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 import sys
 import os
+import logging
 
 # Add the parent directory to the path so we can import from search
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -19,6 +20,8 @@ from search.competitor_config import CompetitorDiscoveryConfig
 from search.market_intelligence import MarketIntelligenceReport
 from fastapi.responses import FileResponse, Response
 
+# Initialize logger
+logger = logging.getLogger("api")
 
 # Check if supabase client is available
 if supabase_client is None:
@@ -49,6 +52,7 @@ class SearchRequest(BaseModel):
     include_web: bool = True
     limit: int = 10
     generate_insights: bool = True
+    business_model_filter: Optional[str] = None
 
 class SearchResponse(BaseModel):
     query: str
@@ -183,13 +187,36 @@ async def build_search_context(request: ContextRequest):
 @app.post("/search", response_model=SearchResponse)
 async def perform_search(request: SearchRequest):
     """Perform intelligent search with VC-focused insights"""
+    import logging
+    logger = logging.getLogger("api")
+    
     try:
+        logger.info(f"🔍 API Search Request: '{request.query}' (limit: {request.limit}, web: {request.include_web}, business_model: {request.business_model_filter})")
+
         results = search_service.search(
             query=request.query,
             include_web=request.include_web,
             limit=request.limit,
-            generate_insights=request.generate_insights
+            generate_insights=request.generate_insights,
+            business_model_filter=request.business_model_filter
         )
+
+        # Log the results breakdown
+        database_results = results.get('database', [])
+        ph_results = [r for r in database_results if r.get('source_type') == 'product_hunt']
+        articles = [r for r in database_results if r.get('source_type') == 'article']
+        
+        logger.info(f"📊 API Response: {len(database_results)} total database results")
+        logger.info(f"📰 Articles: {len(articles)}")
+        logger.info(f"🚀 Product Hunt products: {len(ph_results)}")
+        
+        if ph_results:
+            logger.info("🚀 Product Hunt products in API response:")
+            for i, product in enumerate(ph_results[:3], 1):
+                product_name = product.get('product_name', 'Unknown')
+                weight_boost = product.get('weight_boost', 1.0)
+                weighted_score = product.get('weighted_score', 0.0)
+                logger.info(f"  {i}. {product_name} (boost: {weight_boost}x, score: {weighted_score:.3f})")
 
         return SearchResponse(
             query=results['query'],
@@ -201,6 +228,9 @@ async def perform_search(request: SearchRequest):
             timestamp=results['timestamp']
         )
     except Exception as e:
+        logger.error(f"❌ API Search Error: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/portfolio-companies")

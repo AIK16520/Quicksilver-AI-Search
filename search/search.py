@@ -411,6 +411,7 @@ class SearchService:
     def _search_database(self, query: str, limit: int) -> List[Dict]:
         """
         Search curated database using semantic search with vector embeddings.
+        Now includes Product Hunt products with higher weight.
         """
         if not self.openai_client:
             logger.warning("OpenAI key not set, using keyword search")
@@ -421,6 +422,40 @@ class SearchService:
         if not query_embedding:
             return self._keyword_search_database(query, limit)
 
+        try:
+            # Search articles (60% of results)
+            article_limit = int(limit * 0.6)
+            logger.info(f"🔍 Searching articles with limit: {article_limit}")
+            article_results = self._search_article_chunks(query_embedding, article_limit)
+            logger.info(f"📰 Found {len(article_results)} articles")
+            
+            # Search Product Hunt products (40% of results, but with higher weight)
+            product_limit = int(limit * 0.4)
+            logger.info(f"Searching Product Hunt products with limit: {product_limit}")
+            product_results = self._search_product_hunt(query, product_limit)
+            logger.info(f"Found {len(product_results)} Product Hunt products")
+            
+            # Combine results with Product Hunt boost
+            combined_results = self._combine_search_results(article_results, product_results)
+
+            # Sort by weighted relevance
+            final_results = self._rank_combined_results(combined_results, limit)
+
+            # Log final result breakdown
+            ph_final = [r for r in final_results if r.get('source_type') == 'product_hunt']
+            articles_final = [r for r in final_results if r.get('source_type') == 'article']
+            logger.info(f"Final breakdown: {len(articles_final)} articles, {len(ph_final)} Product Hunt products")
+            
+            return final_results
+            
+        except Exception as e:
+            logger.warning(f"Vector search failed: {e}. Falling back to keyword search.")
+            import traceback
+            traceback.print_exc()
+            return self._keyword_search_database(query, limit)
+
+    def _search_article_chunks(self, query_embedding: List[float], limit: int) -> List[Dict]:
+        """Search article chunks with embeddings"""
         try:
             # Fetch chunks with embeddings from database
             response = self.supabase.table('article_chunks').select(
@@ -441,7 +476,7 @@ class SearchService:
 
             if not response.data:
                 logger.warning("No chunks with embeddings found")
-                return self._keyword_search_database(query, limit)
+                return []
 
             # Calculate cosine similarity in Python
             query_vec = np.array(query_embedding, dtype=np.float32)
@@ -483,8 +518,8 @@ class SearchService:
                     continue
 
             if not chunks_with_similarity:
-                logger.warning("No valid embeddings found, falling back to keyword search")
-                return self._keyword_search_database(query, limit)
+                logger.warning("No valid embeddings found")
+                return []
 
             # Sort by similarity
             chunks_with_similarity.sort(key=lambda x: x['similarity'], reverse=True)
@@ -503,7 +538,9 @@ class SearchService:
                         'published_date': article_data.get('published_date'),
                         'similarity': chunk['similarity'],
                         'matched_chunks': [],
-                        'source': 'database'
+                        'source': 'database',
+                        'source_type': 'article',
+                        'weight_boost': 1.0
                     }
 
                 # Update similarity to best match
@@ -524,10 +561,8 @@ class SearchService:
             return results[:limit]
 
         except Exception as e:
-            logger.warning(f"Vector search failed: {e}. Falling back to keyword search.")
-            import traceback
-            traceback.print_exc()
-            return self._keyword_search_database(query, limit)
+            logger.error(f"Article search failed: {e}")
+            return []
         
     def _keyword_search_database(self, query: str, limit: int) -> List[Dict]:
         """
@@ -774,7 +809,170 @@ class SearchService:
         except Exception as e:
             logger.error(f"Embedding generation failed: {e}")
             return None
+    def _search_product_hunt(self, query: str, limit: int) -> List[Dict]:
+        """Search Product Hunt products with higher weight"""
+        if not self.openai_client:
+            logger.warning("OpenAI client not available, skipping Product Hunt search")
+            return []
 
+        query_embedding = self._generate_embedding(query)
+        if not query_embedding:
+            logger.warning("Failed to generate query embedding, skipping Product Hunt search")
+            return []
+
+        try:
+            # Search both embedding types for better coverage
+            desc_results = self._search_product_embeddings(
+                query_embedding, 'embedding', limit
+            )
+            keyword_results = self._search_product_embeddings(
+                query_embedding, 'keyword_embedding', limit
+            )
+
+            # Combine and boost Product Hunt results
+            combined = self._merge_and_boost_product_results(desc_results, keyword_results)
+
+            # Add source type for identification
+            for result in combined:
+                result['source_type'] = 'product_hunt'
+                result['weight_boost'] = 1.5  # 50% more weight than articles
+
+            logger.info(f"Product Hunt search completed: {len(combined)} products")
+            return combined
+            
+        except Exception as e:
+            logger.error(f"Product Hunt search failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+    def _search_product_embeddings(self, query_embedding: List[float],
+                             embedding_column: str, limit: int) -> List[Dict]:
+        """Search specific embedding column in Product Hunt table using Python similarity"""
+        try:
+            # Fetch products with embeddings
+            from datetime import datetime, timedelta
+
+            seven_days_ago = (datetime.now() - timedelta(days=7)).isoformat()
+
+            query = self.supabase.table('product_hunt_products').select(
+                f'id, product_name, overview, description, product_link, producthunt_link, Business, Tech, Moat, {embedding_column}'
+            ).not_.is_(embedding_column, 'null').gte('scraped_at', seven_days_ago)
+
+            response = query.execute()
+
+            if not response.data:
+                logger.warning(f"No products found with {embedding_column}")
+                return []
+
+            # Calculate cosine similarity in Python
+            query_vec = np.array(query_embedding, dtype=np.float32)
+            products_with_similarity = []
+
+            for i, row in enumerate(response.data):
+                product_embedding = row.get(embedding_column)
+                if not product_embedding:
+                    continue
+                
+                try:
+                    # Parse embedding (comes as string or list from Supabase)
+                    if isinstance(product_embedding, str):
+                        import json
+                        product_embedding = json.loads(product_embedding)
+                    
+                    # Convert to numpy array
+                    product_vec = np.array(product_embedding, dtype=np.float32)
+                    
+                    # Validate dimensions match
+                    if len(product_vec) != len(query_vec):
+                        continue
+
+                    # Calculate cosine similarity
+                    similarity = np.dot(query_vec, product_vec) / (
+                        np.linalg.norm(query_vec) * np.linalg.norm(product_vec)
+                    )
+
+                    product_name = row.get('product_name', 'Unknown')
+
+                    products_with_similarity.append({
+                        'id': row.get('id'),
+                        'product_name': product_name,
+                        'overview': row.get('overview', ''),
+                        'description': row.get('description', ''),
+                        'product_link': row.get('product_link', ''),
+                        'producthunt_link': row.get('producthunt_link', ''),
+                        'similarity': float(similarity)
+                    })
+
+                except Exception as e:
+                    continue
+
+            # Sort by similarity and return top results
+            products_with_similarity.sort(key=lambda x: x['similarity'], reverse=True)
+            top_results = products_with_similarity[:limit]
+            
+            return top_results
+            
+        except Exception as e:
+            logger.error(f"Product Hunt {embedding_column} search failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+    def _merge_and_boost_product_results(self, desc_results: List[Dict], 
+                                    keyword_results: List[Dict]) -> List[Dict]:
+        """Merge description and keyword results, removing duplicates"""
+        seen_products = set()
+        merged = []
+        
+        # Add description results first (usually more comprehensive)
+        for result in desc_results:
+            product_id = result.get('id')
+            if product_id and product_id not in seen_products:
+                result['search_type'] = 'description'
+                merged.append(result)
+                seen_products.add(product_id)
+        
+        # Add keyword results (more focused)
+        for result in keyword_results:
+            product_id = result.get('id')
+            if product_id and product_id not in seen_products:
+                result['search_type'] = 'keyword'
+                merged.append(result)
+                seen_products.add(product_id)
+        
+        return merged
+
+    def _combine_search_results(self, articles: List[Dict], products: List[Dict]) -> List[Dict]:
+        """Combine article and product results"""
+        combined = []
+        
+        # Add articles with standard weight
+        for article in articles:
+            article['source_type'] = 'article'
+            article['weight_boost'] = 1.0
+            combined.append(article)
+        
+        # Add products with boosted weight
+        for product in products:
+            product['source_type'] = 'product_hunt'
+            product['weight_boost'] = 1.5  # 50% more weight
+            combined.append(product)
+        
+        return combined
+
+    def _rank_combined_results(self, results: List[Dict], limit: int) -> List[Dict]:
+        """Rank results by weighted similarity score"""
+        # Calculate weighted scores
+        for result in results:
+            base_similarity = result.get('similarity', 0.0)
+            weight_boost = result.get('weight_boost', 1.0)
+            result['weighted_score'] = base_similarity * weight_boost
+        
+        # Sort by weighted score (descending)
+        sorted_results = sorted(results, key=lambda x: x.get('weighted_score', 0), reverse=True)
+        
+        return sorted_results[:limit]
     def _generate_insights(
         self,
         query: str,
@@ -791,15 +989,29 @@ class SearchService:
         # Prepare context from results
         context_parts = []
 
+        # Separate articles and products from database results
+        articles = [r for r in db_results if r.get('source_type') == 'article']
+        products = [r for r in db_results if r.get('source_type') == 'product_hunt']
+
         # Add database results
-        if db_results:
-            context_parts.append(" Curated Database Results:")
-            for idx, item in enumerate(db_results[:5], 1):
+        if articles:
+            context_parts.append(" Curated Database Results (Articles):")
+            for idx, item in enumerate(articles[:3], 1):
                 context_parts.append(f"\n{idx}. {item['title']}")
                 if item.get('company_names'):
                     context_parts.append(f"   Companies: {', '.join(item['company_names'])}")
                 if item.get('matched_chunks'):
                     context_parts.append(f"   Context: {item['matched_chunks'][0]['text']}")
+
+        # Add Product Hunt results
+        if products:
+            context_parts.append("\n\n Product Hunt Products:")
+            for idx, item in enumerate(products[:3], 1):
+                context_parts.append(f"\n{idx}. {item.get('product_name', item.get('title', 'Unknown Product'))}")
+                if item.get('overview'):
+                    context_parts.append(f"   Overview: {item['overview'][:200]}...")
+                if item.get('product_link'):
+                    context_parts.append(f"   Product Link: {item['product_link']}")
 
         # Add web results
         if web_results:
@@ -1170,18 +1382,29 @@ Be concrete and actionable for VC portfolio management. Avoid generic statements
             print(f"FROM YOUR CURATED DATABASE ({len(results['database'])} results)")
             print("-"*80)
             for idx, item in enumerate(results['database'], 1):
-                print(f"\n{idx}. {item['title']}")
-                print(f"   URL: {item['url']}")
-                if item.get('company_names'):
-                    print(f"   Companies: {', '.join(item['company_names'][:5])}")
-                if item.get('published_date'):
-                    print(f"   Date: {item['published_date']}")
-                if item.get('similarity'):
-                    print(f"   Relevance: {item['similarity']:.1%}")
-                if item.get('matched_chunks'):
-                    print(f"   Preview: {item['matched_chunks'][0]['text'][:200]}...")
-                elif item.get('snippet'):
-                    print(f"   Preview: {item['snippet'][:200]}...")
+                # Handle Product Hunt products differently
+                if item.get('source_type') == 'product_hunt':
+                    print(f"\n{idx}. 🚀 {item.get('product_name', 'Unknown Product')} (Product Hunt)")
+                    print(f"   Product Link: {item.get('product_link', 'N/A')}")
+                    print(f"   Product Hunt: {item.get('producthunt_link', 'N/A')}")
+                    if item.get('overview'):
+                        print(f"   Overview: {item['overview'][:200]}...")
+                    if item.get('weighted_score'):
+                        print(f"   Relevance: {item['weighted_score']:.1%} (boosted)")
+                else:
+                    # Regular article
+                    print(f"\n{idx}. {item['title']}")
+                    print(f"   URL: {item['url']}")
+                    if item.get('company_names'):
+                        print(f"   Companies: {', '.join(item['company_names'][:5])}")
+                    if item.get('published_date'):
+                        print(f"   Date: {item['published_date']}")
+                    if item.get('similarity'):
+                        print(f"   Relevance: {item['similarity']:.1%}")
+                    if item.get('matched_chunks'):
+                        print(f"   Preview: {item['matched_chunks'][0]['text'][:200]}...")
+                    elif item.get('snippet'):
+                        print(f"   Preview: {item['snippet'][:200]}...")
         else:
             print("\nFROM YOUR CURATED DATABASE: No results found")
 
