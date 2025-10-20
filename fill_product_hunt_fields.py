@@ -50,7 +50,7 @@ Product Name: {product['product_name']}
 Overview: {product.get('overview', '')}
 Description: {product.get('description', '')[:300]}
 
-Common business models: SaaS, Enterprise Software, Data-as-a-Service, API Platform, Consulting, Open Source, Freemium, Marketplace, etc.
+
 
 Business Model:"""
 
@@ -81,7 +81,7 @@ Product Name: {product['product_name']}
 Overview: {product.get('overview', '')}
 Description: {product.get('description', '')[:300]}
 
-Common technologies: AI/ML, Data Analytics, Automation, Blockchain, Cloud, Mobile, Web, IoT, etc.
+
 
 Technology:"""
 

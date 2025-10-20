@@ -187,43 +187,20 @@ class MarketIntelligenceService:
             
             # Execute queries for this dimension
             for query in queries[:3]:  # Limit queries per dimension
-                # Add financial domain filtering to search query
-                financial_terms = ["hedge fund", "trading", "financial analytics", "fintech", "investment management"]
-                enhanced_query = f"{query} {' '.join(financial_terms[:2])}"
-
-                # Search web results with enhanced query
-                search_results = self._brave_search(enhanced_query, num_results=5)
+                # Search web results
+                search_results = self._brave_search(query, num_results=5)
                 
                 for result in search_results:
-                    # Apply relevance scoring for financial context
                     title = result.get('title', '')
                     description = result.get('description', '')
                     text = f"{title} {description}".lower()
-
-                    # Financial keywords that boost relevance
-                    financial_keywords = ['hedge fund', 'trading', 'financial', 'fintech', 'investment', 'portfolio', 'market data', 'trading algorithm', 'risk management', 'asset management']
-                    # Keywords that penalize relevance (irrelevant domains)
-                    irrelevant_keywords = ['healthcare', 'medical', 'hospital', 'patient', 'doctor', 'visual perception', 'speech recognition', 'computer vision', 'image recognition']
-
-                    relevance_score = 1.0
-                    financial_matches = sum(1 for keyword in financial_keywords if keyword in text)
-                    irrelevant_matches = sum(1 for keyword in irrelevant_keywords if keyword in text)
-
-                    # Boost for financial keywords, penalize for irrelevant keywords
-                    relevance_score += financial_matches * 0.3
-                    relevance_score -= irrelevant_matches * 0.5
-
-                    # Skip results that are clearly irrelevant (negative relevance)
-                    if relevance_score <= 0:
-                        continue
 
                     articles.append({
                         'title': title,
                         'url': result.get('url', ''),
                         'description': description,
                         'query': query,
-                        'source': 'web',
-                        'relevance_score': relevance_score
+                        'source': 'web'
                     })
 
                     # Extract mentions (simple approach)
@@ -237,33 +214,12 @@ class MarketIntelligenceService:
                         if tech.lower() in text:
                             technologies_mentioned.add(tech)
                 
-                # Search Product Hunt products for this query with domain filtering
-                # Add financial domain filtering to Product Hunt search
-                financial_terms = ["hedge fund", "trading", "financial", "fintech"]
-                enhanced_ph_query = f"{query} {' '.join(financial_terms[:2])}"
-                ph_products = self._search_product_hunt_for_dimension(enhanced_ph_query, max_results=3)
+                # Search Product Hunt products for this query
+                ph_products = self._search_product_hunt_for_dimension(query, max_results=3)
                 for product in ph_products:
-                    # Apply relevance scoring for Product Hunt products too
                     title = product.get('product_name', '')
                     description = product.get('overview', '')
                     text = f"{title} {description}".lower()
-
-                    # Financial keywords that boost relevance
-                    financial_keywords = ['hedge fund', 'trading', 'financial', 'fintech', 'investment', 'portfolio', 'market data', 'trading algorithm', 'risk management', 'asset management']
-                    # Keywords that penalize relevance (irrelevant domains)
-                    irrelevant_keywords = ['healthcare', 'medical', 'hospital', 'patient', 'doctor', 'visual perception', 'speech recognition', 'computer vision', 'image recognition']
-
-                    relevance_score = 1.0 + product.get('weight_boost', 1.5)  # Start with Product Hunt boost
-                    financial_matches = sum(1 for keyword in financial_keywords if keyword in text)
-                    irrelevant_matches = sum(1 for keyword in irrelevant_keywords if keyword in text)
-
-                    # Boost for financial keywords, penalize for irrelevant keywords
-                    relevance_score += financial_matches * 0.3
-                    relevance_score -= irrelevant_matches * 0.5
-
-                    # Skip results that are clearly irrelevant (negative relevance)
-                    if relevance_score <= 0:
-                        continue
 
                     articles.append({
                         'title': title,
@@ -272,7 +228,7 @@ class MarketIntelligenceService:
                         'query': query,
                         'source': 'product_hunt',
                         'producthunt_link': product.get('producthunt_link', ''),
-                        'weight_boost': relevance_score
+                        'weight_boost': product.get('weight_boost', 1.5)
                     })
 
                     # Extract mentions from Product Hunt products
@@ -288,14 +244,14 @@ class MarketIntelligenceService:
                 
                 time.sleep(self.min_request_interval)  # Rate limiting
             
-            # Extract technology usage details
-            technology_usage = self._extract_technology_usage_details(articles)
+            # Extract technology usage details with query context
+            technology_usage = self._extract_technology_usage_details(articles, components)
 
-            # Extract business model details
-            business_models, company_business_models = self._extract_business_model_details(articles)
+            # Extract business model details with query context
+            business_models, company_business_models = self._extract_business_model_details(articles, components)
 
-            # Extract market insights
-            market_insights = self._extract_market_insights(articles)
+            # Extract market insights with query context
+            market_insights = self._extract_market_insights(articles, components)
 
             # Generate key findings for this dimension
             key_findings = self._extract_key_findings(articles, dimension)
@@ -564,7 +520,7 @@ class MarketIntelligenceService:
 
         return findings
 
-    def _extract_technology_usage_details(self, articles: List[Dict]) -> Dict[str, List[str]]:
+    def _extract_technology_usage_details(self, articles: List[Dict], components: QueryComponents) -> Dict[str, List[str]]:
         """Extract detailed technology usage information from articles using AI"""
         if not self.openai_client or not articles:
             return {}
@@ -575,38 +531,44 @@ class MarketIntelligenceService:
             for article in articles[:10]  # Limit to top 10 articles
         ])
 
-        prompt = f"""Analyze these FINANCIAL SERVICES articles and extract SPECIFIC technology usage information for hedge funds, trading, and financial analytics. You MUST provide concrete details about how technologies are being used in FINANCIAL contexts only.
+        # Build context filter from query components
+        context_filter = []
+        if components.domain:
+            context_filter.extend(components.domain[:2])
+        if components.keywords:
+            context_filter.extend([kw for kw in components.keywords[:3] if len(kw) > 4])
+        if components.technologies:
+            context_filter.extend(components.technologies[:2])
+
+        context_str = ', '.join(context_filter[:5])
+
+        prompt = f"""Analyze these articles and extract SPECIFIC technology usage information RELEVANT to: {context_str}
 
 Articles:
 {articles_text}
 
-CRITICAL: ONLY extract technologies related to FINANCIAL SERVICES, hedge funds, trading, or fintech. IGNORE healthcare, visual perception, general AI, or unrelated domains.
+CRITICAL FILTERING:
+- ONLY extract technologies that are DIRECTLY RELATED to: {context_str}
+- IGNORE generic AI/SaaS products unless they specifically serve the domain: {', '.join(components.domain) if components.domain else 'specified domain'}
+- FOCUS on technologies that solve problems for: {', '.join(components.keywords[:3]) if components.keywords else 'the target use case'}
 
 Extract and return ONLY valid JSON:
 {{
   "technologies": [
     {{
-      "name": "Financial Technology Name",
-      "usage_examples": ["Concrete financial usage example", "Another trading/fintech example"],
-      "companies_using": ["Financial Company 1", "Trading Firm 2"],
-      "innovation_details": "Specific financial innovation details",
-      "domain": "financial services"
+      "name": "Technology Name (must be relevant to {context_str})",
+      "usage_examples": ["Concrete usage example for {context_str}", "Another specific example"],
+      "companies_using": ["Company 1", "Company 2"],
+      "innovation_details": "Specific innovation details",
+      "relevance_check": "Explain why this is relevant to {context_str}"
     }}
   ]
 }}
 
-CRITICAL REQUIREMENTS:
-- ONLY include technologies used in FINANCIAL SERVICES, hedge funds, trading, or fintech
-- EXCLUDE healthcare, visual perception, general AI applications, or unrelated domains
-- If articles mention "AI technologies" in financial contexts, extract the specific financial applications
-- Focus on financial data analysis, trading algorithms, risk management, portfolio optimization
-- Do NOT return empty results if financial technologies are mentioned
-
-Focus on extracting:
-- Financial technology names and applications only
-- Concrete financial usage examples with details
-- Actual financial companies using these technologies
-- Specific financial innovations and implementations"""
+STRICT REQUIREMENTS:
+- Technologies MUST be related to the query context: {context_str}
+- If a technology is generic (e.g., "AI invoicing", "SaaS starter kit"), SKIP it unless it specifically serves the target domain
+- Return EMPTY list if no relevant technologies found"""
 
         try:
             response = self.openai_client.chat.completions.create(
@@ -636,7 +598,7 @@ Focus on extracting:
             logger.error(f"AI technology extraction failed: {e}")
             return {}
 
-    def _extract_business_model_details(self, articles: List[Dict]) -> tuple[List[str], Dict[str, List[str]]]:
+    def _extract_business_model_details(self, articles: List[Dict], components: QueryComponents) -> tuple[List[str], Dict[str, List[str]]]:
         """Extract business model details using AI to discover NEW and INNOVATIVE models"""
         if not self.openai_client or not articles:
             return [], {}
@@ -647,39 +609,43 @@ Focus on extracting:
             for article in articles[:10]  # Limit to top 10 articles
         ])
 
-        prompt = f"""Analyze these FINANCIAL SERVICES articles and extract SPECIFIC business model information for hedge funds, trading, and financial analytics. You MUST provide concrete details about innovative FINANCIAL approaches.
+        # Build context filter
+        context_filter = []
+        if components.domain:
+            context_filter.extend(components.domain[:2])
+        if components.keywords:
+            context_filter.extend([kw for kw in components.keywords[:3] if len(kw) > 4])
+
+        context_str = ', '.join(context_filter[:5])
+
+        prompt = f"""Analyze these articles and extract SPECIFIC business model information RELEVANT to: {context_str}
 
 Articles:
 {articles_text}
 
-CRITICAL: ONLY extract business models related to FINANCIAL SERVICES, hedge funds, trading, or fintech. IGNORE healthcare, visual perception, general software, or unrelated domains.
+CRITICAL FILTERING:
+- ONLY extract business models that are DIRECTLY RELATED to: {context_str}
+- IGNORE generic subscription/SaaS models unless they specifically serve: {', '.join(components.domain) if components.domain else 'specified domain'}
+- FOCUS on business models for companies serving: {', '.join(components.keywords[:3]) if components.keywords else 'the target market'}
 
 Extract and return ONLY valid JSON:
 {{
   "business_models": [
     {{
-      "name": "Specific Financial Business Model",
-      "description": "Detailed financial business model explanation with specific examples",
-      "companies": ["Financial Company 1", "Trading Firm 2"],
+      "name": "Specific Business Model (must be relevant to {context_str})",
+      "description": "Detailed business model explanation for {context_str}",
+      "companies": ["Company 1", "Company 2"],
       "innovation_level": "new/emerging/innovative/traditional",
-      "specific_approach": "Concrete financial innovation details",
-      "domain": "financial services"
+      "specific_approach": "Concrete innovation details",
+      "relevance_check": "Explain why this is relevant to {context_str}"
     }}
   ]
 }}
 
-CRITICAL REQUIREMENTS:
-- ONLY include business models for FINANCIAL SERVICES, hedge funds, trading, or fintech
-- EXCLUDE healthcare, visual perception, general software, or unrelated business models
-- Focus on financial monetization strategies, trading platforms, data services, investment tools
-- Look for hedge fund specific models, trading algorithms, financial data services
-- Do NOT return empty results if financial innovations are mentioned
-
-Focus on extracting:
-- Financial business model innovations only
-- Concrete financial monetization approaches
-- Actual financial companies and their strategies
-- Specific financial innovations and revenue models"""
+STRICT REQUIREMENTS:
+- Business models MUST serve the target domain: {context_str}
+- If a business model is generic (e.g., "subscription-based fintech"), SKIP it unless it specifically addresses the target use case
+- Return EMPTY list if no relevant business models found"""
 
         try:
             response = self.openai_client.chat.completions.create(
@@ -723,7 +689,7 @@ Focus on extracting:
             logger.error(f"AI business model extraction failed: {e}")
             return [], {}
 
-    def _extract_market_insights(self, articles: List[Dict]) -> List[str]:
+    def _extract_market_insights(self, articles: List[Dict], components: QueryComponents) -> List[str]:
         """Extract market insights from articles using AI"""
         if not self.openai_client or not articles:
             return []
@@ -734,41 +700,45 @@ Focus on extracting:
             for article in articles[:10]  # Limit to top 10 articles
         ])
 
-        prompt = f"""Analyze these FINANCIAL SERVICES articles and extract SPECIFIC market insights for hedge funds, trading, and financial analytics. You MUST provide concrete details about FINANCIAL trends and opportunities.
+        # Build context filter
+        context_filter = []
+        if components.domain:
+            context_filter.extend(components.domain[:2])
+        if components.keywords:
+            context_filter.extend([kw for kw in components.keywords[:3] if len(kw) > 4])
+
+        context_str = ', '.join(context_filter[:5])
+
+        prompt = f"""Analyze these articles and extract SPECIFIC market insights RELEVANT to: {context_str}
 
 Articles:
 {articles_text}
 
-CRITICAL: ONLY extract insights related to FINANCIAL SERVICES, hedge funds, trading, or fintech. IGNORE healthcare, visual perception, general AI, or unrelated domains.
+CRITICAL FILTERING:
+- ONLY extract market insights that are DIRECTLY RELATED to: {context_str}
+- IGNORE generic AI/technology trends unless they specifically impact: {', '.join(components.domain) if components.domain else 'specified domain'}
+- FOCUS on insights for companies/trends in: {', '.join(components.keywords[:3]) if components.keywords else 'the target market'}
 
 Extract and return ONLY valid JSON:
 {{
   "market_insights": [
-    "Specific financial market insight with concrete details and examples",
-    "Another financial market trend with specific companies and statistics"
+    "Specific market insight about {context_str} with concrete details",
+    "Another trend affecting {context_str} with specific companies"
   ],
   "innovative_approaches": [
-    "Specific financial innovative approach mentioned with details",
-    "Another financial innovative strategy with company examples"
+    "Specific innovative approach for {context_str}",
+    "Another strategy specifically for {context_str}"
   ],
   "emerging_players": [
-    "Specific emerging financial company with their approach",
-    "Another new financial player with their strategy"
+    "Specific emerging company in {context_str}",
+    "Another new player serving {context_str}"
   ]
 }}
 
-CRITICAL REQUIREMENTS:
-- ONLY include insights for FINANCIAL SERVICES, hedge funds, trading, or fintech
-- EXCLUDE healthcare, visual perception, general AI, or unrelated market insights
-- Focus on financial market trends, trading innovations, hedge fund technologies
-- Look for specific financial opportunities, investment trends, fintech innovations
-- Do NOT return empty results if financial innovations are mentioned
-
-Focus on extracting:
-- Financial market insights and trends only
-- Specific financial innovative approaches with concrete details
-- Actual financial companies and their strategies
-- Concrete financial market opportunities and gaps"""
+STRICT REQUIREMENTS:
+- Insights MUST be related to: {context_str}
+- If an insight is generic (e.g., "AI funding doubled"), SKIP it unless it directly impacts the target domain
+- Return EMPTY lists if no relevant insights found"""
 
         try:
             response = self.openai_client.chat.completions.create(

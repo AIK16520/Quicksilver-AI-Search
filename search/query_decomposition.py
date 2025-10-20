@@ -67,46 +67,36 @@ class QueryDecompositionService:
 
 Query: {query}
 
-FOCUS ON MARKET DISCOVERY: Extract information to discover new and emerging companies, technologies, and business models in the market.
+CRITICAL INSTRUCTIONS:
+1. Identify the SPECIFIC USE CASE and APPLICATION mentioned in the query
+2. Distinguish between PROVIDER and CUSTOMER industries
+3. Extract ALL key context: what problem is solved, what data is used, who benefits
 
-IMPORTANT: Distinguish between PROVIDER and CUSTOMER industries.
-- If the query says "company that does X for Y" → Y is the customer, X is what the company does
-- Domain should describe the PROVIDER company's industry, NOT the customer's industry
-- Target customers should be WHO USES the product/service
-
-CRITICAL: For FINANCIAL SERVICES queries, ALWAYS identify them correctly:
-
-1. "hedge fund and trade analysis using AI agents"
-   - Domain: "hedge fund technology", "financial analytics", "trading platforms", "fintech"
-   - Target customers: "hedge funds", "trading firms", "investment managers"
-   - Technologies: "AI agents", "data scraping", "market data", "financial news", "automation"
-   - Keywords: "hedge fund analysis", "trade analysis", "market data scraping", "financial news monitoring", "automated updates"
-
-2. "AI platform for investment management"
-   - Domain: "financial technology", "investment management", "fintech"
-   - Target customers: "investment firms", "asset managers", "financial advisors"
-   - Technologies: "AI", "machine learning", "portfolio optimization"
-
-3. "trading data analysis tools"
-   - Domain: "financial data analytics", "trading technology"
-   - Target customers: "trading desks", "investment banks", "hedge funds"
-   - Technologies: "data analysis", "real-time processing", "financial APIs"
+IMPORTANT:
+- If query says "company that does X for Y" → Y is the customer, X is what the company does
+- Domain should describe the PROVIDER company's industry/use case (e.g., "hedge fund analytics", "trading analysis", "market data intelligence")
+- Technologies: Specific tech AND data types mentioned (e.g., "AI agents", "market data scraping", "financial news analysis")
+- Keywords: MUST include the problem being solved, data sources, and customer type
+- Target customers: Who BUYS/USES the product
 
 Extract and return ONLY valid JSON with this EXACT structure:
 {{
-  "domain": ["provider industry 1", "provider industry 2"],
-  "technologies": ["tech1", "tech2", "tech3"],
-  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
-  "target_customers": ["who uses this product/service"]
+  "domain": ["specific provider industry with use case context"],
+  "technologies": ["tech1", "tech2", "data source 1", "data source 2"],
+  "keywords": ["problem/use case", "data type 1", "data type 2", "customer type", "key capability 1", "key capability 2"],
+  "target_customers": ["who uses this product/service"],
+  "core_use_case": "one sentence describing what these companies do"
 }}
 
-Guidelines:
-- Domain: The PROVIDER company's industry (what category of company they are)
-- Technologies: Specific tech mentioned in the query
-- Keywords: Features, capabilities, and market terms mentioned
-- Target customers: Who BUYS/USES the product (these are NOT the companies we want to find)
+EXAMPLES:
+Query: "company that does hedge fund analysis using AI agents that scrape market data"
+→ domain: ["hedge fund analytics", "AI-powered trading analysis"]
+→ technologies: ["AI", "AI agents", "web scraping", "market data analysis"]
+→ keywords: ["hedge fund analysis", "market data", "trading analysis", "financial data", "automated updates", "hedge funds"]
+→ target_customers: ["hedge funds", "trading firms"]
+→ core_use_case: "AI-powered market data analysis and automated insights for hedge funds and trading firms"
 
-Focus on discovering NEW companies, technologies, and business models in this space."""
+Focus on discovering companies, technologies, and business models that match this SPECIFIC use case."""
 
         try:
             response = self.openai_client.chat.completions.create(
@@ -141,29 +131,130 @@ Focus on discovering NEW companies, technologies, and business models in this sp
             return self._rule_based_decomposition(query)
     
     def _rule_based_decomposition(self, query: str) -> QueryComponents:
-        """Fallback rule-based decomposition if AI is unavailable - optimized for financial services"""
+        """Fallback rule-based decomposition if AI is unavailable"""
 
-        # Financial services specific keywords
-        tech_keywords = ['AI', 'ML', 'machine learning', 'agent', 'automation', 'scraping', 'NLP', 'neural network', 'data analysis', 'real-time processing']
-        domain_keywords = ['hedge fund', 'trading', 'financial analytics', 'fintech', 'investment management', 'asset management', 'financial technology']
-        data_keywords = ['market data', 'pricing', 'financial news', 'real-time data', 'trading data', 'financial data', 'portfolio data']
-        customer_keywords = ['hedge funds', 'trading firms', 'investment managers', 'asset managers', 'financial institutions', 'investment banks']
+        # Comprehensive technology keywords list
+        tech_keywords = [
+            # AI/ML & Intelligence
+            'AI', 'ML', 'machine learning', 'artificial intelligence', 'deep learning', 'neural network', 
+            'NLP', 'natural language processing', 'computer vision', 'predictive analytics', 'automation',
+            'robotic process automation', 'RPA', 'intelligent automation', 'cognitive computing',
+            'machine vision', 'speech recognition', 'text analysis', 'sentiment analysis',
+            
+            # Data & Analytics
+            'data analysis', 'data science', 'big data', 'data mining', 'business intelligence', 'BI',
+            'data visualization', 'dashboard', 'reporting', 'analytics', 'statistical analysis',
+            'data engineering', 'ETL', 'data pipeline', 'data warehouse', 'data lake',
+            'data modeling', 'data governance', 'data quality', 'data profiling', 'data catalog',
+            'real-time analytics', 'streaming analytics', 'predictive modeling', 'forecasting',
+            
+            # Cloud & Infrastructure
+            'cloud', 'SaaS', 'PaaS', 'IaaS', 'AWS', 'Azure', 'GCP', 'Google Cloud', 'Microsoft Azure',
+            'cloud computing', 'serverless', 'microservices', 'containerization', 'Docker', 'Kubernetes',
+            'edge computing', 'distributed computing', 'scalability', 'infrastructure',
+            'multi-cloud', 'hybrid cloud', 'private cloud', 'public cloud', 'cloud migration',
+            'load balancing', 'auto-scaling', 'CDN', 'content delivery network',
+            
+            # Web & Mobile Development
+            'web', 'mobile', 'iOS', 'Android', 'React', 'Vue', 'Angular', 'Node.js', 'JavaScript',
+            'TypeScript', 'Python', 'Java', 'C#', 'Go', 'Rust', 'PHP', 'Ruby', 'Swift', 'Kotlin',
+            'responsive design', 'progressive web app', 'PWA', 'cross-platform', 'Flutter', 'React Native',
+            'Xamarin', 'Ionic', 'Cordova', 'HTML5', 'CSS3', 'Bootstrap', 'jQuery',
+            
+            # APIs & Integration
+            'API', 'REST', 'GraphQL', 'webhook', 'integration', 'middleware', 'microservices',
+            'service-oriented architecture', 'SOA', 'event-driven', 'message queue', 'Kafka',
+            'API gateway', 'API management', 'API documentation', 'OpenAPI', 'Swagger',
+            'web services', 'SOAP', 'gRPC', 'message broker', 'event streaming',
+            
+            # Blockchain & Crypto
+            'blockchain', 'crypto', 'cryptocurrency', 'Bitcoin', 'Ethereum', 'DeFi', 'NFT',
+            'smart contract', 'distributed ledger', 'Web3', 'metaverse', 'virtual reality', 'VR',
+            'augmented reality', 'AR', 'mixed reality', 'MR', 'crypto trading', 'digital assets',
+            'tokenization', 'consensus mechanism', 'proof of work', 'proof of stake',
+            
+            # Security & Privacy
+            'cybersecurity', 'security', 'encryption', 'privacy', 'GDPR', 'compliance', 'authentication',
+            'authorization', 'identity management', 'zero trust', 'penetration testing', 'vulnerability',
+            'threat detection', 'incident response', 'security monitoring', 'access control',
+            'data protection', 'privacy by design', 'security audit', 'risk assessment',
+            
+            # IoT & Hardware
+            'IoT', 'internet of things', 'sensors', 'embedded systems', 'hardware', 'firmware',
+            'edge devices', 'smart devices', 'wearables', 'industrial IoT', 'IIoT',
+            'sensor networks', 'device management', 'fleet management', 'asset tracking',
+            'smart home', 'smart city', 'connected devices', 'M2M', 'machine to machine',
+            
+            # Emerging Technologies
+            'quantum computing', 'quantum', '5G', '6G', 'autonomous vehicles', 'self-driving',
+            'robotics', 'drones', 'UAV', 'satellite', 'space tech', 'biotech', 'fintech',
+            'healthtech', 'edtech', 'cleantech', 'greentech', 'agtech', 'proptech',
+            'nanotechnology', 'synthetic biology', 'gene editing', 'CRISPR',
+            
+            # Business & Process
+            'workflow', 'process', 'optimization', 'efficiency', 'productivity', 'collaboration',
+            'project management', 'CRM', 'ERP', 'HR', 'accounting', 'finance', 'marketing',
+            'sales', 'customer service', 'support', 'ticketing', 'helpdesk', 'workflow automation',
+            'business process management', 'BPM', 'process mining', 'digital transformation',
+            
+            # Communication & Collaboration
+            'communication', 'messaging', 'chat', 'video conferencing', 'telephony', 'VoIP',
+            'collaboration', 'teamwork', 'remote work', 'virtual office', 'digital workspace',
+            'unified communications', 'UC', 'team collaboration', 'document sharing',
+            'screen sharing', 'web conferencing', 'instant messaging', 'presence',
+            
+            # E-commerce & Financial
+            'e-commerce', 'ecommerce', 'marketplace', 'online store', 'payment', 'fintech',
+            'digital wallet', 'cryptocurrency', 'trading', 'investment', 'wealth management',
+            'banking', 'financial services', 'payment processing', 'POS', 'point of sale',
+            'subscription billing', 'recurring billing', 'payment gateway', 'PCI compliance',
+            
+            # Content & Media
+            'content management', 'CMS', 'digital marketing', 'SEO', 'social media', 'streaming',
+            'video', 'audio', 'podcast', 'blog', 'publishing', 'media', 'entertainment',
+            'content creation', 'video editing', 'audio editing', 'live streaming',
+            'content delivery', 'media management', 'digital asset management', 'DAM',
+            
+            # Automation & RPA
+            'automation', 'RPA', 'robotic process automation', 'workflow automation',
+            'process automation', 'intelligent automation', 'business process automation', 'BPA',
+            'task automation', 'script automation', 'test automation', 'deployment automation',
+            'infrastructure automation', 'configuration management', 'orchestration',
+            
+            # Database & Storage
+            'database', 'SQL', 'NoSQL', 'MongoDB', 'PostgreSQL', 'MySQL', 'Redis', 'Elasticsearch',
+            'data storage', 'file storage', 'object storage', 'backup', 'recovery',
+            'data replication', 'data synchronization', 'data archiving', 'data retention',
+            'database optimization', 'query optimization', 'indexing', 'partitioning',
+            
+            # Development & DevOps
+            'DevOps', 'CI/CD', 'continuous integration', 'continuous deployment', 'version control',
+            'Git', 'GitHub', 'GitLab', 'testing', 'QA', 'quality assurance', 'deployment',
+            'monitoring', 'logging', 'APM', 'application performance monitoring',
+            'infrastructure as code', 'IaC', 'configuration management', 'container orchestration',
+            
+            # Additional Tech Terms
+            'machine learning', 'deep learning', 'neural networks', 'artificial intelligence',
+            'data science', 'business intelligence', 'cloud computing', 'serverless computing',
+            'microservices architecture', 'API-first', 'headless', 'composable',
+            'low-code', 'no-code', 'citizen development', 'visual programming',
+            'machine learning ops', 'MLOps', 'data ops', 'DataOps', 'model ops', 'ModelOps'
+        ]
 
         query_lower = query.lower()
-        
         technologies = [kw for kw in tech_keywords if kw.lower() in query_lower]
-        domain = [kw for kw in domain_keywords if kw.lower() in query_lower]
-        data_sources = [kw for kw in data_keywords if kw.lower() in query_lower]
-        target_customers = [kw for kw in customer_keywords if kw.lower() in query_lower]
+
+        # Extract domain and customer info from the query itself
+        domain = []
+        target_customers = []
         
         # Extract potential keywords (simple word extraction)
         words = re.findall(r'\b[a-z]{4,}\b', query_lower)
         keywords = list(set(words))[:10]
-        
+
         search_dimensions = self._generate_search_dimensions({
             'domain': domain,
             'technologies': technologies,
-            'data_sources': data_sources,
             'keywords': keywords,
             'target_customers': target_customers
         })
@@ -185,117 +276,130 @@ Focus on discovering NEW companies, technologies, and business models in this sp
         Focus on discovering NEW companies, technologies, and business models
         """
         dimensions = {}
-        
+
         domain = components.get('domain', [])
         technologies = components.get('technologies', [])
         keywords = components.get('keywords', [])
         target_customers = components.get('target_customers', [])
-        
+        core_use_case = components.get('core_use_case', '')
+
+        # Build context-rich query base combining domain, technologies, and keywords
+        # This ensures search results are highly relevant to the specific use case
+        context_parts = []
+        if domain:
+            context_parts.extend(domain[:2])
+        if technologies:
+            context_parts.extend(technologies[:2])
+        if keywords:
+            # Prioritize keywords that describe the problem/use case
+            context_parts.extend([kw for kw in keywords[:3] if len(kw) > 4])
+
+        context_base = ' '.join(context_parts[:4])  # Limit to avoid too long queries
+
         # Dimension 1: Emerging Companies & Startups
         dimensions['companies'] = []
-        
-        if domain:
+
+        # Use FULL context to ensure relevance
+        if domain and keywords:
+            # Combine domain + key capabilities for precision
             for d in domain[:2]:
-                dimensions['companies'].extend([
-                    f"new startups in {d}",
-                    f"emerging companies {d}",
-                    f"recent {d} companies launched",
-                    f"innovative {d} solutions"
-                ])
-        
-        if target_customers:
-            for customer in target_customers[:2]:
-                dimensions['companies'].extend([
-                    f"new companies serving {customer}",
-                    f"startups for {customer}",
-                    f"innovative solutions for {customer}"
-                ])
-        
-        if technologies and domain:
+                for kw in keywords[:2]:
+                    dimensions['companies'].append(f"companies {d} {kw}")
+                    dimensions['companies'].append(f"startups {kw} for {target_customers[0] if target_customers else d}")
+
+        if context_base:
             dimensions['companies'].extend([
-                f"new {technologies[0]} companies in {domain[0]}",
-                f"startups using {technologies[0]} for {domain[0]}"
+                f"new companies {context_base}",
+                f"startups {context_base}",
+                f"emerging {context_base} platforms"
             ])
+
+        if technologies and target_customers:
+            for tech in technologies[:2]:
+                for customer in target_customers[:1]:
+                    dimensions['companies'].append(f"{tech} platforms for {customer}")
         
         # Dimension 2: Technology Innovations
         dimensions['technology'] = []
-        if technologies:
-            for tech in technologies[:3]:
-                dimensions['technology'].extend([
-                    f"new {tech} innovations",
-                    f"emerging {tech} technologies",
-                    f"latest {tech} developments",
-                    f"cutting-edge {tech} solutions"
-                ])
-        
-        if domain:
+
+        # Use context-rich queries combining tech + domain + use case
+        if technologies and domain:
+            for tech in technologies[:2]:
+                for d in domain[:1]:
+                    dimensions['technology'].extend([
+                        f"{tech} for {d}",
+                        f"{tech} {d} solutions",
+                        f"{d} using {tech}"
+                    ])
+
+        if context_base:
             dimensions['technology'].extend([
-                f"new technologies in {domain[0]}",
-                f"innovative tech solutions for {domain[0]}",
-                f"emerging tech trends in {domain[0]}"
+                f"technologies for {context_base}",
+                f"{context_base} technology stack"
             ])
         
         # Dimension 3: Business Model Innovation
         dimensions['business_models'] = []
-        if domain:
+
+        if context_base:
             dimensions['business_models'].extend([
-                f"new business models in {domain[0]}",
-                f"innovative monetization {domain[0]}",
-                f"emerging revenue models {domain[0]}",
-                f"disruptive business models {domain[0]}"
+                f"business models {context_base}",
+                f"pricing models {context_base}",
+                f"monetization {context_base}"
             ])
-        
-        if keywords:
+
+        if domain and target_customers:
             dimensions['business_models'].extend([
-                f"new business models for {' '.join(keywords[:2])}",
-                f"innovative pricing {' '.join(keywords[:2])}"
+                f"business models {domain[0]} for {target_customers[0]}",
+                f"SaaS pricing {domain[0]}"
             ])
         
         # Dimension 4: Market Innovations & Trends
         dimensions['innovations'] = []
-        if domain:
+
+        if context_base:
             dimensions['innovations'].extend([
-                f"latest innovations in {domain[0]}",
-                f"new approaches to {domain[0]}",
-                f"disruptive innovations {domain[0]}",
-                f"breakthrough solutions {domain[0]}"
+                f"innovations in {context_base}",
+                f"new approaches {context_base}",
+                f"breakthrough {context_base}"
             ])
-        
-        if technologies:
+
+        if domain and technologies:
             dimensions['innovations'].extend([
-                f"innovative applications of {technologies[0]}",
-                f"new use cases for {technologies[0]}"
+                f"{technologies[0]} innovations in {domain[0]}",
+                f"novel {domain[0]} solutions"
             ])
         
         # Dimension 5: Market Trends & Opportunities
         dimensions['market_trends'] = []
-        if domain:
+
+        if context_base:
             dimensions['market_trends'].extend([
-                f"emerging trends in {domain[0]}",
-                f"new opportunities in {domain[0]}",
-                f"market gaps in {domain[0]}",
-                f"future of {domain[0]}"
+                f"trends in {context_base}",
+                f"market opportunities {context_base}",
+                f"future of {context_base}"
             ])
-        
-        if target_customers:
+
+        if target_customers and domain:
             dimensions['market_trends'].extend([
-                f"new trends affecting {target_customers[0]}",
-                f"emerging needs of {target_customers[0]}"
+                f"trends in {domain[0]} for {target_customers[0]}",
+                f"{target_customers[0]} technology trends"
             ])
         
         # Dimension 6: Competitive Landscape Discovery
         dimensions['competitive'] = []
-        if keywords:
+
+        if context_base:
             dimensions['competitive'].extend([
-                f"new players in {' '.join(keywords[:2])}",
-                f"emerging competitors {' '.join(keywords[:2])}",
-                f"recent entrants {' '.join(keywords[:2])}"
+                f"competitors in {context_base}",
+                f"alternative {context_base} platforms",
+                f"companies competing in {context_base}"
             ])
-        
-        if domain:
+
+        if domain and target_customers:
             dimensions['competitive'].extend([
-                f"new competitors in {domain[0]}",
-                f"emerging players {domain[0]}"
+                f"vendors {domain[0]} for {target_customers[0]}",
+                f"{domain[0]} service providers"
             ])
         
         return dimensions

@@ -44,10 +44,8 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 function App() {
   const [query, setQuery] = useState('');
-  const [includeWeb, setIncludeWeb] = useState(true);
-  const [searchMode, setSearchMode] = useState('new'); // 'old' or 'new'
   const [loading, setLoading] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState({ stage: '', current: 0, total: 0, percent: 0 });
+  const [loadingProgress, setLoadingProgress] = useState({ stage: '', percent: 0 });
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [deepDiveData, setDeepDiveData] = useState(null);
@@ -63,75 +61,55 @@ function App() {
     setDeepDiveData(null);
 
     try {
-      if (searchMode === 'old') {
-        // OLD SEARCH - Portfolio-focused with insights
-        setLoadingProgress({ stage: 'Searching database and web...', current: 1, total: 3, percent: 33 });
-        
-      const searchResponse = await axios.post(`${API_BASE_URL}/search`, {
+      // Market intelligence search with improved loading stages
+      const stages = [
+        { name: 'Analyzing query...', percent: 5 },
+        { name: 'Searching companies...', percent: 15 },
+        { name: 'Searching technology...', percent: 25 },
+        { name: 'Searching business models...', percent: 35 },
+        { name: 'Searching innovations...', percent: 45 },
+        { name: 'Searching market trends...', percent: 55 },
+        { name: 'Discovering competitors...', percent: 65 },
+        { name: 'Extracting entities...', percent: 70 },
+        { name: 'AI generating insights...', percent: 75 },
+        { name: 'AI analyzing technologies...', percent: 80 },
+        { name: 'AI extracting business models...', percent: 85 },
+        { name: 'AI identifying market trends...', percent: 90 },
+        { name: 'AI analyzing key players...', percent: 95 },
+        { name: 'Finalizing report...', percent: 98 }
+      ];
+
+      // Simulate progressive loading (since backend doesn't stream yet)
+      let currentStage = 0;
+      const progressInterval = setInterval(() => {
+        if (currentStage < stages.length - 1) {
+          currentStage++;
+          setLoadingProgress({
+            stage: stages[currentStage].name,
+            percent: stages[currentStage].percent
+          });
+        }
+      }, 1800); // Update every 1.8 seconds for smoother progress
+
+      setLoadingProgress({ stage: stages[0].name, percent: stages[0].percent });
+
+      const searchResponse = await axios.post(`${API_BASE_URL}/market-intelligence`, {
         query: query,
-        include_web: includeWeb,
-        limit: 7,
-        generate_insights: true
+        max_results_per_dimension: 8,
+        include_ai_insights: true,
+        format_type: 'api'
       });
 
-        setLoadingProgress({ stage: 'Generating insights...', current: 2, total: 3, percent: 66 });
-        
-        // Simulate slight delay to show progress
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        setLoadingProgress({ stage: 'Complete!', current: 3, total: 3, percent: 100 });
-        setResults({ mode: 'old', data: searchResponse.data });
-      } else {
-        // NEW SEARCH - Market intelligence with interactive elements
-        const stages = [
-          'Analyzing query...',
-          'Searching companies...',
-          'Searching technology...',
-          'Searching business models...',
-          'Searching innovations...',
-          'Searching market trends...',
-          'Discovering competitors...',
-          'Extracting entities...',
-          'AI generating insights (this takes a moment)...',
-          'AI analyzing key players...',
-          'AI identifying trends...',
-          'Finalizing report...'
-        ];
+      clearInterval(progressInterval);
+      setLoadingProgress({ stage: 'Complete!', percent: 100 });
 
-        // Simulate progressive loading (since backend doesn't stream yet)
-        let currentStage = 0;
-        const progressInterval = setInterval(() => {
-          if (currentStage < stages.length - 2) {  // Stop before "Finalizing"
-            currentStage++;
-            setLoadingProgress({
-              stage: stages[currentStage],
-              current: currentStage + 1,
-              total: stages.length,
-              percent: Math.round(((currentStage + 1) / stages.length) * 100)
-            });
-          }
-        }, 2500); // Update every 2.5 seconds
-
-        setLoadingProgress({ stage: stages[0], current: 1, total: stages.length, percent: 8 });
-        
-        const searchResponse = await axios.post(`${API_BASE_URL}/market-intelligence`, {
-          query: query,
-          max_results_per_dimension: 8,
-          include_ai_insights: true,
-          format_type: 'api'
-        });
-        
-        clearInterval(progressInterval);
-        setLoadingProgress({ stage: 'Complete!', current: stages.length, total: stages.length, percent: 100 });
-        
-        setResults({ mode: 'new', data: searchResponse.data.data });
-      }
+      setResults({ mode: 'new', data: searchResponse.data.data });
     } catch (err) {
       setError(err.response?.data?.detail || 'An error occurred during search');
     } finally {
       setLoading(false);
       // Reset progress after a short delay
-      setTimeout(() => setLoadingProgress({ stage: '', current: 0, total: 0, percent: 0 }), 1000);
+      setTimeout(() => setLoadingProgress({ stage: '', percent: 0 }), 1000);
     }
   };
 
@@ -208,66 +186,18 @@ function App() {
               </Button>
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
-              {/* Search Mode Toggle */}
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  variant={searchMode === 'old' ? 'contained' : 'outlined'}
-                  onClick={() => setSearchMode('old')}
-                  disabled={loading}
-                  size="small"
-                >
-                  Old Search (Portfolio Focus)
-                </Button>
-                <Button
-                  variant={searchMode === 'new' ? 'contained' : 'outlined'}
-                  onClick={() => setSearchMode('new')}
-                  disabled={loading}
-                  size="small"
-                  color="secondary"
-                >
-                  New Search (Market Intelligence)
-                </Button>
-              </Box>
-
-              {searchMode === 'old' && (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={includeWeb}
-                    onChange={(e) => setIncludeWeb(e.target.checked)}
-                    disabled={loading}
-                  />
-                }
-                label="Include Live Web Results"
-              />
-              )}
-
-              {searchMode === 'new' && (
-                <Chip 
-                  label="Interactive: Click companies for deep dive" 
-                  color="secondary" 
-                  variant="outlined"
-                />
-              )}
-            </Box>
           </Paper>
 
           {/* Loading Progress Bar */}
           {loading && loadingProgress.stage && (
             <Paper sx={{ p: 3, mb: 3 }}>
               <Box sx={{ width: '100%' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {loadingProgress.stage}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {loadingProgress.current} / {loadingProgress.total}
-                  </Typography>
-                </Box>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={loadingProgress.percent} 
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {loadingProgress.stage}
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={loadingProgress.percent}
                   sx={{ height: 8, borderRadius: 1 }}
                 />
                 <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
@@ -283,124 +213,7 @@ function App() {
             </Alert>
           )}
 
-          {results && results.mode === 'old' && (
-            <Box>
-              {/* OLD SEARCH RESULTS */}
-              {results.data.insights && (
-                <Paper sx={{ p: 3, mb: 3 }}>
-                  <Typography variant="h5" gutterBottom>
-                    INSIGHTS (Portfolio Focus)
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  {results.data.insights.summary && (
-                    <Box sx={{ mb: 3 }}>
-                      <Typography variant="body1" component="div">
-                        <div dangerouslySetInnerHTML={{
-                          __html: results.data.insights.summary
-                            .replace(/^(#+)\s*(.*?)(<br>|\n|$)/gm, '<strong>$2</strong><br>')
-                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                            .replace(/\n/g, '<br>')
-                        }} />
-                      </Typography>
-                    </Box>
-                  )}
-                </Paper>
-              )}
-
-              {/* Database Results */}
-              {results.data.database && results.data.database.length > 0 && (
-                <Paper sx={{ p: 3, mb: 3 }}>
-                  <Typography variant="h6" gutterBottom>
-                    FROM YOUR CURATED DATABASE ({results.data.database.length} results)
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  {(() => {
-                    // Separate Product Hunt products and articles
-                    const phProducts = results.data.database.filter(item => item.source_type === 'product_hunt');
-                    const articles = results.data.database.filter(item => item.source_type !== 'product_hunt');
-                    
-                    // Combine with Product Hunt products first
-                    const sortedResults = [...phProducts, ...articles];
-                    
-                    return sortedResults.map((item, index) => (
-                      <Card key={index} sx={{ mb: 2 }}>
-                        <CardContent>
-                          {/* Handle Product Hunt products differently */}
-                          {item.source_type === 'product_hunt' ? (
-                            <Box>
-                              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="h6" sx={{ mr: 1 }}>🚀</Typography>
-                                <Typography variant="h6" gutterBottom>{item.product_name}</Typography>
-                                <Chip 
-                                  label="PH" 
-                                  size="small" 
-                                  color="secondary" 
-                                  sx={{ ml: 1 }}
-                                />
-                              </Box>
-                              {item.overview && (
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                  {item.overview}
-                                </Typography>
-                              )}
-                              <Box sx={{ mt: 1 }}>
-                                {item.product_link && (
-                                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                    <strong>Product Hunt:</strong> <a href={item.product_link} target="_blank" rel="noopener noreferrer">{item.product_link}</a>
-                                  </Typography>
-                                )}
-                                {item.weighted_score && (
-                                  <Typography variant="body2" color="primary">
-                                    <strong>Relevance:</strong> {(item.weighted_score * 100).toFixed(1)}% (boosted)
-                                  </Typography>
-                                )}
-                              </Box>
-                            </Box>
-                          ) : (
-                            <Box>
-                              <Typography variant="h6" gutterBottom>📰 {item.title}</Typography>
-                              <Typography variant="body2" color="text.secondary" gutterBottom>{item.url}</Typography>
-                              {item.company_names && (
-                                <Box sx={{ mt: 1 }}>
-                                  <Typography variant="body2"><strong>Companies:</strong> {item.company_names.join(', ')}</Typography>
-                                </Box>
-                              )}
-                              {item.similarity && (
-                                <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
-                                  <strong>Relevance:</strong> {(item.similarity * 100).toFixed(1)}%
-                                </Typography>
-                              )}
-                            </Box>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ));
-                  })()}
-                </Paper>
-              )}
-
-              {/* Web Results */}
-              {results.data.web && results.data.web.length > 0 && (
-                <Paper sx={{ p: 3, mb: 3 }}>
-                  <Typography variant="h6" gutterBottom>
-                    FROM LIVE WEB ({results.data.web.length} results)
-                  </Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  {results.data.web.map((item, index) => (
-                    <Card key={index} sx={{ mb: 2 }}>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>{item.title}</Typography>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>{item.description}</Typography>
-                        <Typography variant="body2" color="text.secondary">{item.url}</Typography>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </Paper>
-              )}
-            </Box>
-          )}
-
-          {results && results.mode === 'new' && (
+          {results && (
             <Box>
               {/* Market Landscape Section */}
                 <Paper sx={{ p: 3, mb: 3 }}>
@@ -413,40 +226,69 @@ function App() {
                 <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
                   Current State of the Market
                 </Typography>
-                <Typography variant="body1" sx={{ mb: 3 }}>
+                <Typography variant="body1" sx={{ mb: 3 }} component="div">
                   {(() => {
                     let marketState = results.data.executive_summary || "Analysis of current market conditions and trends.";
 
-                    // Add specific insights from dimensions if available
+                    // Add business model insights from dimensions
                     if (results.data.dimensions) {
-                      const insights = [];
-
+                      const businessModels = [];
                       Object.values(results.data.dimensions).forEach(dimension => {
-                        if (dimension.key_findings && dimension.key_findings.length > 0) {
-                          // Look for specific market insights
-                          dimension.key_findings.forEach(finding => {
-                            if (finding.toLowerCase().includes('market') ||
-                                finding.toLowerCase().includes('trend') ||
-                                finding.toLowerCase().includes('growth') ||
-                                finding.toLowerCase().includes('adoption')) {
-                              insights.push(finding);
-                            }
-                          });
+                        if (dimension.business_model_details && dimension.business_model_details.length > 0) {
+                          businessModels.push(...dimension.business_model_details.slice(0, 2));
+                        }
+                      });
+
+                      if (businessModels.length > 0) {
+                        const cleanedModels = businessModels.slice(0, 2).map(model =>
+                          model.replace(/\s*\(Innovation:.*?\)\s*/g, '').split(':')[0]
+                        );
+                        marketState += " Key business models in this space include: " + cleanedModels.join(", ") + ".";
+                      }
+
+                      // Add market insights
+                      const insights = [];
+                      Object.values(results.data.dimensions).forEach(dimension => {
+                        if (dimension.market_insights && dimension.market_insights.length > 0) {
+                          insights.push(...dimension.market_insights.slice(0, 2));
                         }
                       });
 
                       if (insights.length > 0) {
-                        marketState += " Key market insights include: " + insights.slice(0, 2).join("; ");
+                        marketState += " " + insights.slice(0, 2).join(" ");
                       }
                     }
 
-                    return marketState;
+                    // Bold company names in the text
+                    // Match capitalized words that look like company names (2+ words starting with capitals, or single words with Corp/Inc/LLC/Technologies/etc)
+                    const companyPattern = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+(?:\s+(?:Inc|LLC|Corp|Corporation|Technologies|Systems|Solutions|Group|Holdings|Limited|Ltd))?)|\b([A-Z][a-z]+(?:\s+(?:Inc|LLC|Corp|Corporation|Technologies|Systems|Solutions|Group|Holdings|Limited|Ltd)))\b/g;
+
+                    const parts = [];
+                    let lastIndex = 0;
+                    let match;
+
+                    while ((match = companyPattern.exec(marketState)) !== null) {
+                      // Add text before the match
+                      if (match.index > lastIndex) {
+                        parts.push(marketState.substring(lastIndex, match.index));
+                      }
+                      // Add bolded company name
+                      parts.push(<strong key={match.index}>{match[0]}</strong>);
+                      lastIndex = match.index + match[0].length;
+                    }
+
+                    // Add remaining text
+                    if (lastIndex < marketState.length) {
+                      parts.push(marketState.substring(lastIndex));
+                    }
+
+                    return parts.length > 0 ? parts : marketState;
                   })()}
                 </Typography>
 
-                {/* Discovered Technologies & Innovations */}
+                {/* Discovered Technologies & Innovations - Only show technologies without specific companies */}
                 <Typography variant="h6" gutterBottom>
-                  Discovered Technologies & Innovations
+                  Key Technologies
                 </Typography>
                 <Box sx={{ mb: 3 }}>
                   {(() => {
@@ -458,168 +300,54 @@ function App() {
                         if (dimension.technology_usage_details) {
                           Object.entries(dimension.technology_usage_details).forEach(([tech, usages]) => {
                             if (!technologyDetails[tech]) {
-                              technologyDetails[tech] = [];
+                              technologyDetails[tech] = {
+                                usages: [],
+                                companies: []
+                              };
                             }
-                            technologyDetails[tech] = technologyDetails[tech].concat(usages);
+                            technologyDetails[tech].usages = technologyDetails[tech].usages.concat(usages);
                           });
                         }
                       });
                     }
 
-                    const technologiesWithDetails = Object.keys(technologyDetails);
-                    // Limit to top 12 technologies
-                    const limitedTechnologies = technologiesWithDetails.slice(0, 12);
+                    // Filter to only show general technologies (no specific companies)
+                    const generalTechnologies = Object.entries(technologyDetails).filter(([tech, data]) => {
+                      // Only show if it's a general trend/technology, not company-specific
+                      return data.usages.length > 0 && !data.usages[0].toLowerCase().includes('company');
+                    }).slice(0, 6); // Limit to 6 general technologies
 
-                    return limitedTechnologies.length > 0 ? (
+                    return generalTechnologies.length > 0 ? (
                       <Grid container spacing={2}>
-                        {limitedTechnologies.map((tech, index) => (
+                        {generalTechnologies.map(([tech, data], index) => (
                           <Grid item xs={12} sm={6} md={4} key={index}>
                             <Paper sx={{ p: 2, height: '100%' }}>
                               <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
                                 {tech}
                               </Typography>
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                {technologyDetails[tech][0] || `Technology used in financial data analysis and automation`}
+                              <Typography variant="body2" color="text.secondary">
+                                {data.usages[0]}
                               </Typography>
                             </Paper>
                           </Grid>
                         ))}
                       </Grid>
                     ) : (
-                      <Box>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          No specific innovative technologies discovered in the current search. This could mean:
-                        </Typography>
-                        <Box sx={{ pl: 2 }}>
-                          <Typography variant="body2" sx={{ mb: 1 }}>• The search results may not contain specific technology details</Typography>
-                          <Typography variant="body2" sx={{ mb: 1 }}>• Companies may be using traditional approaches</Typography>
-                          <Typography variant="body2" sx={{ mb: 1 }}>• Try refining your search query for more specific results</Typography>
-                          <Typography variant="body2">• Consider searching for specific technology terms</Typography>
-                        </Box>
-                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        General technology trends will appear here. Specific company technologies are shown in the Companies & Products section below.
+                      </Typography>
                     );
                   })()}
                 </Box>
 
-                {/* Discovered Business Models */}
-                <Typography variant="h6" gutterBottom>
-                  Discovered Business Models & Innovations
-                </Typography>
-                <Box sx={{ mb: 3 }}>
-                  {(() => {
-                    // Extract discovered business models from dimensions
-                    const discoveredBusinessModels = [];
-                    const businessModelCompanies = {};
-
-                    if (results.data.dimensions) {
-                      Object.values(results.data.dimensions).forEach(dimension => {
-                        if (dimension.business_model_details && dimension.business_model_details.length > 0) {
-                          dimension.business_model_details.forEach(model => {
-                            if (!discoveredBusinessModels.includes(model)) {
-                              discoveredBusinessModels.push(model);
-                            }
-                          });
-                        }
-                      });
-                    }
-
-                    // Extract companies from Product Hunt products
-                    if (results.data.dimensions) {
-                      Object.values(results.data.dimensions).forEach(dimension => {
-                        if (dimension.articles) {
-                          dimension.articles.forEach(article => {
-                            if (article.source === 'product_hunt' && article.Business) {
-                              const businessModel = article.Business;
-                              const companyName = article.title;
-                              
-                              if (!businessModelCompanies[businessModel]) {
-                                businessModelCompanies[businessModel] = [];
-                              }
-                              if (!businessModelCompanies[businessModel].includes(companyName)) {
-                                businessModelCompanies[businessModel].push(companyName);
-                              }
-                            }
-                          });
-                        }
-                      });
-                    }
-
-                    // Limit to top 12 business models
-                    const limitedBusinessModels = discoveredBusinessModels.slice(0, 12);
-
-                    return (
-                      <Box>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                          Discovered business models and innovative approaches in the market:
-                        </Typography>
-
-                        {limitedBusinessModels.length > 0 ? (
-                          <Grid container spacing={2}>
-                            {limitedBusinessModels.map((model, index) => {
-                              // Remove innovation labels from the model text
-                              let cleanModel = model.replace(/\s*\(Innovation:.*?\)\s*/g, '');
-
-                              return (
-                                <Grid item xs={12} md={6} key={index}>
-                                  <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                                    <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                      {cleanModel.split(':')[0] || 'Business Model'}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary">
-                                      {cleanModel.split(':')[1] || cleanModel}
-                                    </Typography>
-                                  </Paper>
-                                </Grid>
-                              );
-                            })}
-                          </Grid>
-                        ) : (
-                          <Box>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                              No specific business model innovations discovered yet. The market appears to be using traditional approaches:
-                            </Typography>
-                            <Grid container spacing={2}>
-                              {Object.entries(businessModelCompanies).map(([model, companies], index) => (
-                                <Grid item xs={12} md={6} key={index}>
-                                  <Paper sx={{ p: 2, bgcolor: 'primary.50' }}>
-                                    <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                                      {model}
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ mb: 2 }}>
-                                      Traditional business model with {companies.length} companies identified
-                                    </Typography>
-                                    {companies.length > 0 && (
-                                      <Box>
-                                        <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>Companies:</Typography>
-                                        {companies.slice(0, 3).map((company, idx) => (
-                                          <Typography key={idx} variant="body2" sx={{ mb: 0.5 }}>
-                                            • {company}
-                                          </Typography>
-                                        ))}
-                                        {companies.length > 3 && (
-                                          <Typography variant="body2" color="text.secondary">
-                                            ... and {companies.length - 3} more
-                                          </Typography>
-                                        )}
-                                      </Box>
-                                    )}
-                                  </Paper>
-                                </Grid>
-                              ))}
-                            </Grid>
-                          </Box>
-                        )}
-                      </Box>
-                    );
-                  })()}
-                </Box>
               </Paper>
 
-              {/* Companies Section - Product Hunt first, then regular companies */}
+              {/* Companies Section - Combined Product Hunt and Business Model Companies */}
               {(() => {
                 // Extract Product Hunt products from all dimension results
                 const phProducts = [];
                 const regularCompanies = [];
+                const businessModelCompanies = [];
 
                 if (results.data.dimensions) {
                   Object.values(results.data.dimensions).forEach(dimension => {
@@ -631,7 +359,55 @@ function App() {
                             url: article.url,
                             producthunt_link: article.producthunt_link,
                             description: article.description,
+                            business_model: article.Business,
+                            moat: article.Moat,
                             type: 'product_hunt'
+                          });
+                        }
+                      });
+                    }
+
+                    // Extract companies associated with business models
+                    if (dimension.company_business_models) {
+                      Object.entries(dimension.company_business_models).forEach(([companyName, models]) => {
+                        // Check if this company isn't already in regularCompanies or phProducts
+                        const alreadyExists = regularCompanies.some(c => c.name === companyName) ||
+                                            phProducts.some(p => p.name === companyName);
+
+                        if (!alreadyExists && models.length > 0) {
+                          // Try to find the article URL for this company across ALL dimensions
+                          let companyUrl = null;
+                          
+                          // First check current dimension
+                          if (dimension.articles) {
+                            const companyArticle = dimension.articles.find(article =>
+                              article.title && article.title.toLowerCase().includes(companyName.toLowerCase())
+                            );
+                            if (companyArticle) {
+                              companyUrl = companyArticle.url;
+                            }
+                          }
+                          
+                          // If not found, search across all other dimensions
+                          if (!companyUrl && results.data.dimensions) {
+                            Object.values(results.data.dimensions).forEach(otherDimension => {
+                              if (otherDimension.articles && !companyUrl) {
+                                const companyArticle = otherDimension.articles.find(article =>
+                                  article.title && article.title.toLowerCase().includes(companyName.toLowerCase())
+                                );
+                                if (companyArticle) {
+                                  companyUrl = companyArticle.url;
+                                }
+                              }
+                            });
+                          }
+
+                          businessModelCompanies.push({
+                            name: companyName,
+                            context: `Operates using ${models.join(', ')} business model${models.length > 1 ? 's' : ''}`,
+                            business_models: models,
+                            url: companyUrl,
+                            type: 'business_model_company'
                           });
                         }
                       });
@@ -656,73 +432,77 @@ function App() {
                   index === self.findIndex(p => p.name === product.name)
                 );
 
-                return (uniquePhProducts.length > 0 || regularCompanies.length > 0) && (
+                // Remove duplicates from business model companies
+                const uniqueBusinessModelCompanies = businessModelCompanies.filter((company, index, self) =>
+                  index === self.findIndex(c => c.name === company.name)
+                );
+
+                // Combine all companies and products
+                const allCompanies = [...uniquePhProducts, ...uniqueBusinessModelCompanies];
+                
+                // Separate those with URLs and those without
+                const withUrls = allCompanies.filter(company => company.url);
+                const withoutUrls = allCompanies.filter(company => !company.url);
+                
+                // Shuffle the withUrls array for random ordering
+                const shuffledWithUrls = withUrls.sort(() => Math.random() - 0.5);
+                
+                // Combine: shuffled with URLs first, then without URLs
+                const finalCompanies = [...shuffledWithUrls, ...withoutUrls];
+
+                return (finalCompanies.length > 0 || regularCompanies.length > 0) && (
                 <Paper sx={{ p: 3, mb: 3 }}>
                   <Typography variant="h5" gutterBottom>
-                      Companies & Products
+                      Companies and Products
                   </Typography>
                   <Divider sx={{ mb: 2 }} />
 
-                    {/* Product Hunt Products First */}
-                    {uniquePhProducts.length > 0 && (
+                    {/* Combined Companies and Products */}
+                    {finalCompanies.length > 0 && (
                       <Box sx={{ mb: 3 }}>
-                       
                         <Grid container spacing={2}>
-                          {uniquePhProducts.map((product, index) => (
-                            <Grid item xs={12} md={6} key={`ph-${index}`}>
+                          {finalCompanies.map((company, index) => (
+                            <Grid item xs={12} md={6} key={`company-${index}`}>
                               <Card
                                 sx={{
                                   height: '100%',
-                                  cursor: product.url ? 'pointer' : 'default',
-                                  '&:hover': product.url ? {
+                                  cursor: company.url ? 'pointer' : 'default',
+                                  '&:hover': company.url ? {
                                     boxShadow: 3,
                                     transform: 'translateY(-2px)',
                                     transition: 'all 0.2s ease-in-out'
                                   } : {}
                                 }}
-                                onClick={() => product.url && window.open(product.url, '_blank')}
+                                onClick={() => company.url && window.open(company.url, '_blank')}
                               >
                                 <CardContent>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                    <Typography variant="h6" sx={{ flex: 1 }}>{product.name}</Typography>
-                                    <Chip label="PH" size="small" color="secondary" />
-                                  </Box>
+                                  <Typography variant="h6" sx={{ mb: 2 }}>{company.name}</Typography>
 
                                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                    {product.description || "Emerging product in the market"}
+                                    {company.description || company.context || "Emerging product in the market"}
                                   </Typography>
 
-                                  {/* Business Model Description */}
-                                  {product.Business && (
+                                  {/* Business Model for Product Hunt products */}
+                                  {company.business_model && (
                                     <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
                                       <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                                        💼 Business Model: {product.Business}
-                                      </Typography>
-                                      <Typography variant="body2" color="text.secondary">
-                                        {product.Business} - Discovered innovative business model in the market. This represents a new approach to monetization and value delivery in the space.
+                                        💼 Business Model: {company.business_model}
                                       </Typography>
                                     </Box>
                                   )}
 
-                                  {/* Competitive Moat */}
-                                  {product.Moat && (
+                                  {/* Competitive Moat for Product Hunt products */}
+                                  {company.moat && (
                                     <Box sx={{ mb: 2, p: 2, bgcolor: 'blue.50', borderRadius: 1 }}>
                                       <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
                                         🏰 Competitive Moat
                                       </Typography>
                                       <Typography variant="body2" color="text.secondary">
-                                        {product.Moat}
+                                        {company.moat}
                                       </Typography>
                                     </Box>
                                   )}
 
-                                  <Box sx={{ mt: 1 }}>
-                                    {product.product_link && (
-                                      <Typography variant="body2" sx={{ mb: 0.5 }}>
-                                        <strong>Product Hunt:</strong> <a href={product.product_link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>{product.product_link}</a>
-                                      </Typography>
-                                    )}
-                                  </Box>
                                 </CardContent>
                               </Card>
                             </Grid>
